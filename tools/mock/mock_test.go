@@ -19,6 +19,9 @@ func TestMock(t *testing.T) {
 		in:  []call{Call("simple"), Call("simple")},
 		out: []call{Call("simple"), Call("simple")},
 	}, {
+		in:  []call{},
+		out: []call{},
+	}, {
 		in: []call{
 			Call("FirstMethod", "one", "two"),
 			Call("SecondMethod", "one", 2),
