@@ -45,7 +45,7 @@ func NewRabbitMQ() (Manager, error) {
 	}, nil
 }
 
-func (r *rabbitMQ) Publish(body interface{}, opts *ManagerOptions) error {
+func (r *rabbitMQ) Publish(body interface{}, opts *Options) error {
 	ch, err := r.conn.Channel()
 	if err != nil {
 		return ErrCreateChannel.M("failed to create channel").Wrap(err)
@@ -86,7 +86,7 @@ func (r *rabbitMQ) Publish(body interface{}, opts *ManagerOptions) error {
 	return nil
 }
 
-func (r *rabbitMQ) Consume(opts *ManagerOptions) (<-chan Message, error) {
+func (r *rabbitMQ) Consume(opts *Options) (<-chan Message, error) {
 	ch, err := r.conn.Channel()
 	if err != nil {
 		return nil, ErrCreateChannel.M("failed to create channel").Wrap(err)

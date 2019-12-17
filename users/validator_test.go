@@ -53,8 +53,6 @@ func TestValidateSchema(t *testing.T) {
 					{"username", "invalid", "required"},
 					{"password", "invalid", "required"},
 					{"email", "invalid", "required"},
-					{"name", "invalid", "required"},
-					{"lastname", "invalid", "required"},
 				},
 			},
 		}, {
@@ -66,8 +64,6 @@ func TestValidateSchema(t *testing.T) {
 					{"username", "invalid", "min"},
 					{"password", "invalid", "required"},
 					{"email", "invalid", "required"},
-					{"name", "invalid", "min"},
-					{"lastname", "invalid", "min"},
 				},
 			},
 		}, {
@@ -79,8 +75,6 @@ func TestValidateSchema(t *testing.T) {
 					{"username", "invalid", "required"},
 					{"password", "invalid", "required"},
 					{"email", "invalid", "email"},
-					{"name", "invalid", "required"},
-					{"lastname", "invalid", "required"},
 				},
 			},
 		}, {

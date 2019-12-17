@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	ErrSchemaValidation = errors.Validation.New("user.schema")
+	ErrSchemaValidation = errors.Validation.New("user.invalid_schema")
 )
 
-func ValidateSchema(u *User) error {
+var ValidateSchema = func(u *User) error {
 	validate := validator.New()
 	validate.RegisterValidation("alphaspaces", alphaWithSpaces)
 	validate.RegisterValidation("alphanumdash", alphaNumWithDash)
@@ -27,7 +27,7 @@ func ValidateSchema(u *User) error {
 			return vErr
 		}
 
-		return errors.Unknown.New("user.schema")
+		return ErrSchemaValidation
 	}
 
 	return nil

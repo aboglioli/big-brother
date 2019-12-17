@@ -1,9 +1,9 @@
 package events
 
-type ManagerOptions struct {
+type Options struct {
 	Exchange string
-	Route string
-	Queue string
+	Route    string
+	Queue    string
 }
 
 type Message interface {
@@ -13,6 +13,6 @@ type Message interface {
 }
 
 type Manager interface {
-	Publish(body interface{}, opts *ManagerOptions) error
-	Consume(opts *ManagerOptions) (<-chan Message, error)
+	Publish(body interface{}, opts *Options) error
+	Consume(opts *Options) (<-chan Message, error)
 }

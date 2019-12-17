@@ -1,8 +1,15 @@
 package users
 
 import (
+	"encoding/json"
+
 	"github.com/aboglioli/big-brother/db/models"
+	"github.com/aboglioli/big-brother/errors"
 	"golang.org/x/crypto/bcrypt"
+)
+
+var (
+	ErrSetPassword = errors.Internal.New("user.set_password")
 )
 
 type Role string
@@ -17,9 +24,9 @@ type User struct {
 	Username string `json:"username" bson:"username" validate:"required,min=4,max=32,alphanumdash"`
 	Password string `json:"password" bson:"password" validate:"required"`
 	Email    string `json:"email" bson:"email" validate:"required,email"`
-	Name     string `json:"name" bson:"name" validate:"required,min=2,max=32,alphaspaces"`
-	Lastname string `json:"lastname" bson:"lastname" validate:"required,min=2,max=32,alphaspaces"`
-	Roles    []Role `json:"-" bson:"roles"`
+	Name     string `json:"name" bson:"name" validate:"max=32,alphaspaces"`
+	Lastname string `json:"lastname" bson:"lastname" validate:"max=32,alphaspaces"`
+	Roles    []Role `json:"roles" bson:"roles"`
 }
 
 func NewUser() *User {
@@ -43,4 +50,12 @@ func (u *User) ComparePassword(pwd string) bool {
 		return false
 	}
 	return true
+}
+
+func (u *User) String() string {
+	b, err := json.Marshal(u)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
