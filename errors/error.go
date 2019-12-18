@@ -95,13 +95,11 @@ func (e Error) Wrap(err error) Error {
 }
 
 func (e Error) Error() string {
-	return fmt.Sprintf("code: %s", e.Code)
+	return fmt.Sprintf("code: %s - %s", e.Type, e.Code)
+}
 
-	// b, err := json.Marshal(e)
-	// if err != nil {
-	// 	return ""
-	// }
-	// return string(b)
+func (err1 Error) Equals(err2 Error) bool {
+	return err1.Type == err2.Type && err1.Code == err2.Code
 }
 
 // Errors is a collection of errors

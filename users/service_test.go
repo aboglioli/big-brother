@@ -103,12 +103,8 @@ func TestCreate(t *testing.T) {
 			mockServ.repo.populate(newMockUser())
 			u, err := mockServ.Create(test.in)
 
-			if u != nil {
-				t.Errorf("test %d: expected nil user", i)
-			}
-
-			if err == nil {
-				t.Errorf("test %d: expected error", i)
+			if err == nil || u != nil {
+				t.Errorf("test %d: expected error and nil user", i)
 			}
 
 			call1 := mock.Call("FindByUsername", test.in.Username)
@@ -160,11 +156,13 @@ func TestCreate(t *testing.T) {
 			mockServ := newMockService()
 			user, err := mockServ.Create(test.in)
 
+			// Response
 			if err != nil || user == nil {
 				t.Errorf("test %d: expected user, got error", i)
 				continue
 			}
 
+			// Properties
 			if user.Username != test.out.Username || user.Email != test.out.Email {
 				t.Errorf("test %d:\n-expected:%s - %s\n-actual:  %s - %s", i, test.out.Username, test.out.Email, user.Username, user.Email)
 			}
@@ -177,22 +175,28 @@ func TestCreate(t *testing.T) {
 				t.Errorf("test %d: %v - %v - %v", i, user.Enabled, user.Active, user.Validated)
 			}
 
+			// Validator
 			mockServ.validator.Mock.Assert(t,
 				mock.Call("ValidatePassword", test.in.Password).Return(nil),
 				mock.Call("ValidateSchema", user).Return(nil),
 			)
 
+			// Repository
 			mockServ.repo.Mock.Assert(t,
 				mock.Call("FindByUsername", test.in.Username).Return(mock.Nil, mock.NotNil),
 				mock.Call("FindByEmail", test.in.Email).Return(mock.Nil, mock.NotNil),
 				mock.Call("Insert", mock.NotNil).Return(nil),
 			)
-			insertedUser := mockServ.repo.Mock.Calls[2].Args[0]
-
+			insertedUser, ok := mockServ.repo.Mock.Calls[2].Args[0].(*User)
+			if !ok {
+				t.Error("invalid conversion")
+				continue
+			}
 			if !reflect.DeepEqual(user, insertedUser) {
 				t.Errorf("test %d: inserted user not equal returned user\n-expected:%#v\n-actual:  %#v", i, user, insertedUser)
 			}
 
+			// Events
 			mockServ.events.Mock.Assert(t,
 				mock.Call("Publish", mock.NotNil, mock.NotNil).Return(nil),
 			)
@@ -203,15 +207,45 @@ func TestCreate(t *testing.T) {
 				t.Error("invalid conversion")
 				continue
 			}
-
+			if event.Type != "UserCreated" {
+				t.Errorf("test %d: invalid event type", i)
+			}
 			if !reflect.DeepEqual(user, event.User) {
 				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, user, event.User)
 			}
-
 			if opts.Exchange != "user" || opts.Route != "user.created" || opts.Queue != "" {
 				t.Errorf("test %d: invalid event options %#v", i, opts)
 			}
 		}
 	})
 
+}
+
+func TestUpdate(t *testing.T) {
+	user1 := newMockUser()
+	user2 := newMockUser()
+	user2.Username = "admin"
+	user2.Email = "admin@admin.com"
+	user2.Name = "Admin"
+	user2.Lastname = "Admin"
+	user2.Roles = []Role{ADMIN}
+
+	t.Run("Error", func(t *testing.T) {
+		tests := []struct {
+			in  *UpdateRequest
+			id  string
+			out error
+		}{{}}
+
+		for i, test := range tests {
+			mockServ := newMockService()
+			mockServ.repo.populate(user1, user2)
+			user, err := mockServ.Update(test.id, test.in)
+
+			if user != nil || err == nil {
+				t.Errorf("test %d: expected nil user", i)
+				continue
+			}
+		}
+	})
 }

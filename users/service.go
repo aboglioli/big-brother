@@ -110,8 +110,12 @@ func (s *serviceImpl) Update(id string, req *UpdateRequest) (*User, error) {
 		return nil, err
 	}
 
-	user.Name = req.Name
-	user.Lastname = req.Lastname
+	if req.Name != "" {
+		user.Name = req.Name
+	}
+	if req.Lastname != "" {
+		user.Lastname = req.Lastname
+	}
 
 	// Schema validation
 	if err := s.validator.ValidateSchema(user); err != nil {
