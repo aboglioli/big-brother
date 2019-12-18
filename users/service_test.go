@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/aboglioli/big-brother/errors"
+	"github.com/aboglioli/big-brother/events"
 	"github.com/aboglioli/big-brother/tools/mock"
 )
 
@@ -145,7 +146,13 @@ func TestCreate(t *testing.T) {
 			&CreateRequest{"admin", "123456789", "admin@admin.com"},
 			&User{
 				Username: "admin",
-				Email:    "admin@admin",
+				Email:    "admin@admin.com",
+			},
+		}, {
+			&CreateRequest{"user", "asdqwe123", "user@user.com"},
+			&User{
+				Username: "user",
+				Email:    "user@user.com",
 			},
 		}}
 
@@ -162,13 +169,22 @@ func TestCreate(t *testing.T) {
 				t.Errorf("test %d: user expected", i)
 			}
 
-			if user.Username != test.out.Username || user.Email != user.Email {
-				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.out, user)
+			if user.Username != test.out.Username || user.Email != test.out.Email {
+				t.Errorf("test %d:\n-expected:%s - %s\n-actual:  %s - %s", i, test.out.Username, test.out.Email, user.Username, user.Email)
 			}
 
 			if user.Password == test.in.Password || len(user.Password) < 10 {
 				t.Errorf("test %d: password wrong hashing: %s", i, user.Password)
 			}
+
+			if !user.Enabled || !user.Active || user.Validated {
+				t.Errorf("test %d: %v - %v - %v", i, user.Enabled, user.Active, user.Validated)
+			}
+
+			mockServ.validator.Mock.Assert(t,
+				mock.Call("ValidatePassword", test.in.Password).Return(nil),
+				mock.Call("ValidateSchema", user).Return(nil),
+			)
 
 			mockServ.repo.Mock.Assert(t,
 				mock.Call("FindByUsername", test.in.Username).Return(mock.Nil, mock.NotNil),
@@ -179,6 +195,24 @@ func TestCreate(t *testing.T) {
 
 			if !reflect.DeepEqual(user, insertedUser) {
 				t.Errorf("test %d: inserted user not equal returned user\n-expected:%#v\n-actual:  %#v", i, user, insertedUser)
+			}
+
+			mockServ.events.Mock.Assert(t,
+				mock.Call("Publish", mock.NotNil, mock.NotNil).Return(nil),
+			)
+			event, ok1 := mockServ.events.Mock.Calls[0].Args[0].(*UserEvent)
+			opts, ok2 := mockServ.events.Mock.Calls[0].Args[1].(*events.Options)
+
+			if !ok1 || !ok2 {
+				t.Error("invalid conversion")
+			}
+
+			if !reflect.DeepEqual(user, event.User) {
+				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, user, event.User)
+			}
+
+			if opts.Exchange != "user" || opts.Route != "user.created" || opts.Queue != "" {
+				t.Errorf("test %d: invalid event options %#v", i, opts)
 			}
 		}
 	})
