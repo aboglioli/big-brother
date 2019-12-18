@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	ErrSchemaValidation = errors.Validation.New("user.invalid_schema")
+	ErrSchemaValidation   = errors.Validation.New("user.invalid_schema")
+	ErrPasswordValidation = errors.Validation.New("user.invalid_password")
 )
 
 var ValidateSchema = func(u *User) error {
@@ -28,6 +29,17 @@ var ValidateSchema = func(u *User) error {
 		}
 
 		return ErrSchemaValidation
+	}
+
+	return nil
+}
+
+var ValidatePassword = func(pwd string) error {
+	if len(pwd) < 8 {
+		return ErrPasswordValidation.F("password", "too_weak")
+	}
+	if len(pwd) > 64 {
+		return ErrPasswordValidation.F("password", "invalid_length")
 	}
 
 	return nil

@@ -4,7 +4,20 @@ import (
 	"encoding/json"
 
 	"github.com/aboglioli/big-brother/config"
+	"github.com/aboglioli/big-brother/errors"
 	"github.com/streadway/amqp"
+)
+
+// Errors
+var (
+	ErrConnect         = errors.Internal.New("rabbitmq.connect")
+	ErrCreateChannel   = errors.Internal.New("rabbitmq.create_channel")
+	ErrDeclareExchange = errors.Internal.New("rabbitmq.declare_exchange")
+	ErrDeclareQueue    = errors.Internal.New("rabbitmq.declare_queue")
+	ErrBindQueue       = errors.Internal.New("rabbitmq.bind_queue")
+	ErrMarshal         = errors.Internal.New("rabbitmq.marshal")
+	ErrPublish         = errors.Internal.New("rabbitmq.publish")
+	ErrConsume         = errors.Internal.New("rabbitmq.consume")
 )
 
 // Message

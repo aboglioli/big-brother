@@ -6,15 +6,25 @@ import (
 	"github.com/aboglioli/big-brother/tools/mock"
 )
 
+// User
+func newMockUser() *User {
+	user := NewUser()
+	user.Username = "user"
+	user.SetPassword("123456789")
+	user.Email = "user@user.com"
+	user.Name = "Name"
+	user.Lastname = "Lastname"
+	return user
+}
+
 // Repository
 type mockRepository struct {
 	Mock       mock.Mock
 	Collection []*User
 }
 
-func NewMockRepository() *mockRepository {
+func newMockRepository() *mockRepository {
 	return &mockRepository{
-		Mock:       mock.Mock{},
 		Collection: make([]*User, 0),
 	}
 }

@@ -159,3 +159,29 @@ func TestValidateSchema(t *testing.T) {
 	})
 
 }
+
+func TestValidatePassword(t *testing.T) {
+	tests := []struct {
+		in  string
+		out error
+	}{{
+		"123",
+		ErrPasswordValidation.F("password", "too_weak"),
+	}, {
+		"123456",
+		ErrPasswordValidation.F("password", "too_weak"),
+	}, {
+		"1234567",
+		ErrPasswordValidation.F("password", "too_weak"),
+	}, {
+		"12345678",
+		nil,
+	}}
+
+	for i, test := range tests {
+		err := ValidatePassword(test.in)
+		if !reflect.DeepEqual(err, test.out) {
+			t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.out, err)
+		}
+	}
+}

@@ -63,6 +63,8 @@ func (s *serviceImpl) Create(req *CreateRequest) (*User, error) {
 		errs = append(errs, vErr)
 	}
 
+	// Password strength
+
 	// Create
 	user := NewUser()
 	user.Username = req.Username
