@@ -88,11 +88,11 @@ func TestWrapError(t *testing.T) {
 		in, ok := test.in.(Error)
 		if !ok {
 			t.Errorf("test %d: %#v is not an Error", i, test.in)
-			break
+			continue
 		}
 		if in.Cause == nil {
 			t.Errorf("test %d: %#v should have a Cause", i, in)
-			break
+			continue
 		}
 		if !reflect.DeepEqual(in.Cause, test.out) {
 			t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.out, in.Cause)

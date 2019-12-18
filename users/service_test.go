@@ -160,13 +160,9 @@ func TestCreate(t *testing.T) {
 			mockServ := newMockService()
 			user, err := mockServ.Create(test.in)
 
-			if err != nil {
-				t.Errorf("test %d: err not expected", i)
-				break
-			}
-
-			if user == nil {
-				t.Errorf("test %d: user expected", i)
+			if err != nil || user == nil {
+				t.Errorf("test %d: expected user, got error", i)
+				continue
 			}
 
 			if user.Username != test.out.Username || user.Email != test.out.Email {
@@ -205,6 +201,7 @@ func TestCreate(t *testing.T) {
 
 			if !ok1 || !ok2 {
 				t.Error("invalid conversion")
+				continue
 			}
 
 			if !reflect.DeepEqual(user, event.User) {
