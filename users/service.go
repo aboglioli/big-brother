@@ -27,14 +27,16 @@ type Service interface {
 
 // Implementations
 type serviceImpl struct {
-	repo   Repository
-	events events.Manager
+	repo      Repository
+	events    events.Manager
+	validator Validator
 }
 
 func NewService(repo Repository, events events.Manager) Service {
 	return &serviceImpl{
-		repo:   repo,
-		events: events,
+		repo:      repo,
+		events:    events,
+		validator: NewValidator(),
 	}
 }
 
@@ -54,25 +56,28 @@ func (s *serviceImpl) Create(req *CreateRequest) (*User, error) {
 	// Is it available?
 	vErr := ErrNotAvailable
 	if existing, _ := s.repo.FindByUsername(req.Username); existing != nil {
-		vErr.F("username", "not_available")
+		vErr = vErr.F("username", "not_available")
 	}
 	if existing, _ := s.repo.FindByEmail(req.Email); existing != nil {
-		vErr.F("email", "not_available")
+		vErr = vErr.F("email", "not_available")
 	}
 	if len(vErr.Fields) > 0 {
 		errs = append(errs, vErr)
 	}
 
 	// Password strength
+	if err := s.validator.ValidatePassword(req.Password); err != nil {
+		errs = append(errs, err)
+	}
 
 	// Create
 	user := NewUser()
 	user.Username = req.Username
-	user.Password = req.Password
+	user.SetPassword(req.Password)
 	user.Email = req.Email
 
 	// Schema validation
-	if err := ValidateSchema(user); err != nil {
+	if err := s.validator.ValidateSchema(user); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -109,7 +114,7 @@ func (s *serviceImpl) Update(id string, req *UpdateRequest) (*User, error) {
 	user.Lastname = req.Lastname
 
 	// Schema validation
-	if err := ValidateSchema(user); err != nil {
+	if err := s.validator.ValidateSchema(user); err != nil {
 		return nil, err
 	}
 

@@ -8,17 +8,35 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
+// Errors
 var (
 	ErrSchemaValidation   = errors.Validation.New("user.invalid_schema")
 	ErrPasswordValidation = errors.Validation.New("user.invalid_password")
 )
 
-var ValidateSchema = func(u *User) error {
+// Interfaces
+type Validator interface {
+	ValidateSchema(u *User) error
+	ValidatePassword(pwd string) error
+}
+
+// Implementations
+type validatorImpl struct {
+	validate *validator.Validate
+}
+
+func NewValidator() Validator {
 	validate := validator.New()
 	validate.RegisterValidation("alphaspaces", alphaWithSpaces)
 	validate.RegisterValidation("alphanumdash", alphaNumWithDash)
 
-	if err := validate.Struct(u); err != nil {
+	return &validatorImpl{
+		validate: validate,
+	}
+}
+
+func (v *validatorImpl) ValidateSchema(u *User) error {
+	if err := v.validate.Struct(u); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			vErr := ErrSchemaValidation
 			for _, err := range errs {
@@ -34,7 +52,7 @@ var ValidateSchema = func(u *User) error {
 	return nil
 }
 
-var ValidatePassword = func(pwd string) error {
+func (v *validatorImpl) ValidatePassword(pwd string) error {
 	if len(pwd) < 8 {
 		return ErrPasswordValidation.F("password", "too_weak")
 	}

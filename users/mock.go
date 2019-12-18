@@ -3,6 +3,7 @@ package users
 import (
 	"time"
 
+	"github.com/aboglioli/big-brother/tools/events"
 	"github.com/aboglioli/big-brother/tools/mock"
 )
 
@@ -15,6 +16,32 @@ func newMockUser() *User {
 	user.Name = "Name"
 	user.Lastname = "Lastname"
 	return user
+}
+
+// Validator
+type mockValidator struct {
+	Mock      mock.Mock
+	validator Validator
+}
+
+func (m *mockValidator) ValidateSchema(u *User) error {
+	call := mock.Call("ValidateSchema", u)
+	err := m.validator.ValidateSchema(u)
+	m.Mock.Called(call.Return(err))
+	return err
+}
+
+func (m *mockValidator) ValidatePassword(pwd string) error {
+	call := mock.Call("ValidatePassword", pwd)
+	err := m.validator.ValidatePassword(pwd)
+	m.Mock.Called(call.Return(err))
+	return err
+}
+
+func newMockValidator() *mockValidator {
+	return &mockValidator{
+		validator: NewValidator(),
+	}
 }
 
 // Repository
@@ -82,7 +109,7 @@ func (r *mockRepository) Insert(u *User) error {
 	}
 
 	u.CreatedAt = time.Now()
-	r.Collection = append(r.Collection, u)
+	r.Collection = append(r.Collection, copyUser(u))
 
 	r.Mock.Called(call.Return(nil))
 	return nil
@@ -94,7 +121,7 @@ func (r *mockRepository) Update(u *User) error {
 	for i, item := range r.Collection {
 		if item.ID.Hex() == u.ID.Hex() {
 			u.UpdatedAt = time.Now()
-			r.Collection[i] = u
+			r.Collection[i] = copyUser(u)
 			r.Mock.Called(call.Return(nil))
 			return nil
 		}
@@ -117,4 +144,37 @@ func (r *mockRepository) Delete(id string) error {
 
 	r.Mock.Called(call.Return(ErrRepositoryDelete))
 	return ErrRepositoryDelete
+}
+
+func (r *mockRepository) populate(users ...*User) {
+	r.Collection = make([]*User, 0)
+	for _, user := range users {
+		r.Collection = append(r.Collection, copyUser(user))
+	}
+}
+
+func copyUser(u *User) *User {
+	copy := *u
+	return &copy
+}
+
+// Service
+type mockService struct {
+	*serviceImpl
+	repo      *mockRepository
+	events    *events.MockEventManager
+	validator *mockValidator
+}
+
+func newMockService() *mockService {
+	repo := newMockRepository()
+	events := events.NewMockManager()
+	validator := newMockValidator()
+	serv := &serviceImpl{
+		repo:      repo,
+		events:    events,
+		validator: validator,
+	}
+
+	return &mockService{serv, repo, events, validator}
 }

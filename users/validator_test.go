@@ -8,6 +8,8 @@ import (
 )
 
 func TestValidateSchema(t *testing.T) {
+	validator := NewValidator()
+
 	t.Run("Error", func(t *testing.T) {
 		user1 := NewUser()
 		user2 := NewUser()
@@ -123,7 +125,7 @@ func TestValidateSchema(t *testing.T) {
 		}}
 
 		for i, test := range tests {
-			err := ValidateSchema(test.in)
+			err := validator.ValidateSchema(test.in)
 			if err == nil {
 				t.Errorf("test %d: expected error", i)
 			}
@@ -151,7 +153,7 @@ func TestValidateSchema(t *testing.T) {
 		tests := []*User{user1, user2}
 
 		for i, test := range tests {
-			err := ValidateSchema(test)
+			err := validator.ValidateSchema(test)
 			if err != nil {
 				t.Errorf("test %d: user %#v should be created successful\n-err:%#v", i, test, err)
 			}
@@ -161,6 +163,8 @@ func TestValidateSchema(t *testing.T) {
 }
 
 func TestValidatePassword(t *testing.T) {
+	validator := NewValidator()
+
 	tests := []struct {
 		in  string
 		out error
@@ -179,7 +183,7 @@ func TestValidatePassword(t *testing.T) {
 	}}
 
 	for i, test := range tests {
-		err := ValidatePassword(test.in)
+		err := validator.ValidatePassword(test.in)
 		if !reflect.DeepEqual(err, test.out) {
 			t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.out, err)
 		}
