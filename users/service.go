@@ -100,8 +100,11 @@ func (s *serviceImpl) Create(req *CreateRequest) (*User, error) {
 }
 
 type UpdateRequest struct {
-	Name     string `json:"name"`
-	Lastname string `json:"lastname"`
+	Username *string `json:"username"`
+	Password *string `json:"password"`
+	Email    *string `json:"email"`
+	Name     *string `json:"name"`
+	Lastname *string `json:"lastname"`
 }
 
 func (s *serviceImpl) Update(id string, req *UpdateRequest) (*User, error) {
@@ -110,16 +113,50 @@ func (s *serviceImpl) Update(id string, req *UpdateRequest) (*User, error) {
 		return nil, err
 	}
 
-	if req.Name != "" {
-		user.Name = req.Name
+	errs := make(errors.Errors, 0)
+	vErr := ErrNotAvailable
+	if req.Username != nil {
+		if existing, _ := s.repo.FindByUsername(*req.Username); existing != nil && existing.ID.Hex() != id {
+			vErr = vErr.F("username", "not_available")
+		} else {
+			user.Username = *req.Username
+		}
 	}
-	if req.Lastname != "" {
-		user.Lastname = req.Lastname
+	if req.Email != nil {
+		if existing, _ := s.repo.FindByEmail(*req.Email); existing != nil && existing.ID.Hex() != id {
+			vErr = vErr.F("email", "not_available")
+		} else {
+			user.Email = *req.Email
+			user.Validated = false
+		}
+	}
+
+	if len(vErr.Fields) > 0 {
+		errs = append(errs, vErr)
+	}
+
+	if req.Password != nil {
+		if err := s.validator.ValidatePassword(*req.Password); err != nil {
+			errs = append(errs, ErrPasswordValidation)
+		} else {
+			user.SetPassword(*req.Password)
+		}
+	}
+
+	if req.Name != nil {
+		user.Name = *req.Name
+	}
+	if req.Lastname != nil {
+		user.Lastname = *req.Lastname
 	}
 
 	// Schema validation
 	if err := s.validator.ValidateSchema(user); err != nil {
-		return nil, err
+		errs = append(errs, err)
+	}
+
+	if len(errs) > 0 {
+		return nil, errs
 	}
 
 	// Update

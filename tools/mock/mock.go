@@ -11,6 +11,8 @@ const (
 	NotNil = "mock.NotNil"
 )
 
+type Calls []call
+
 type call struct {
 	Func string
 	Args []interface{}

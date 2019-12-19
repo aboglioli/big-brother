@@ -18,8 +18,8 @@ func TestGetByID(t *testing.T) {
 	user3.Active = false
 
 	tests := []struct {
-		in   string
-		out  error
+		id   string
+		err  error
 		user *User
 	}{{
 		"123",
@@ -50,27 +50,27 @@ func TestGetByID(t *testing.T) {
 	for i, test := range tests {
 		mockServ := newMockService()
 		mockServ.repo.populate(test.user)
-		u, err := mockServ.GetByID(test.in)
+		u, err := mockServ.GetByID(test.id)
 
 		if err != nil {
-			if test.out != nil {
-				expectedErr := test.out.(errors.Error)
+			if test.err != nil {
+				expectedErr := test.err.(errors.Error)
 				err := err.(errors.Error)
 				if expectedErr.Code != err.Code {
-					t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.out, err)
+					t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.err, err)
 				}
 
 			} else {
 				t.Errorf("test %d:\n-expected: nil error\n-actual:%#v", i, err)
 			}
-		}
-
-		if err == nil && !reflect.DeepEqual(u, test.user) {
-			t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.user, u)
+		} else {
+			if !reflect.DeepEqual(u, test.user) {
+				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.user, u)
+			}
 		}
 
 		mockServ.repo.Mock.Assert(t,
-			mock.Call("FindByID", test.in),
+			mock.Call("FindByID", test.id),
 		)
 	}
 }
@@ -81,42 +81,52 @@ func TestCreate(t *testing.T) {
 
 	t.Run("Error", func(t *testing.T) {
 		tests := []struct {
-			in               *CreateRequest
-			existingUsername bool
-			existingEmail    bool
+			req *CreateRequest
+			err error
 		}{{
 			&CreateRequest{"admin", "1234567", "admin@admin.com"},
-			false,
-			false,
+			errors.Errors{ErrPasswordValidation},
 		}, {
 			&CreateRequest{"user", "123456789", "admin@admi.com"},
-			true,
-			false,
+			errors.Errors{ErrNotAvailable},
 		}, {
 			&CreateRequest{"admin", "12345678", "user@user.com"},
-			false,
-			true,
+			errors.Errors{ErrNotAvailable},
+		}, {
+			&CreateRequest{"user", "12345678", "user@user.com"},
+			errors.Errors{ErrNotAvailable},
+		}, {
+			&CreateRequest{"us€r", "1234", "user@user"},
+			errors.Errors{ErrPasswordValidation, ErrSchemaValidation},
+		}, {
+			&CreateRequest{"user", "1234", "user@user"},
+			errors.Errors{ErrNotAvailable, ErrPasswordValidation, ErrSchemaValidation},
 		}}
 
 		for i, test := range tests {
 			mockServ := newMockService()
-			mockServ.repo.populate(newMockUser())
-			u, err := mockServ.Create(test.in)
+			existingUser := newMockUser()
+			mockServ.repo.populate(existingUser)
+			u, err := mockServ.Create(test.req)
 
 			if err == nil || u != nil {
 				t.Errorf("test %d: expected error and nil user", i)
 			}
 
-			call1 := mock.Call("FindByUsername", test.in.Username)
-			call2 := mock.Call("FindByEmail", test.in.Email)
+			if !errors.Compare(test.err, err) {
+				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.err, err)
+			}
 
-			if test.existingUsername {
+			call1 := mock.Call("FindByUsername", test.req.Username)
+			call2 := mock.Call("FindByEmail", test.req.Email)
+
+			if test.req.Username == existingUser.Username {
 				call1 = call1.Return(mock.NotNil, mock.Nil)
 			} else {
 				call1 = call1.Return(mock.Nil, mock.NotNil)
 			}
 
-			if test.existingEmail {
+			if test.req.Email == existingUser.Email {
 				call2 = call2.Return(mock.NotNil, mock.Nil)
 			} else {
 				call2 = call2.Return(mock.Nil, mock.NotNil)
@@ -128,7 +138,7 @@ func TestCreate(t *testing.T) {
 			)
 
 			mockServ.validator.Mock.Assert(t,
-				mock.Call("ValidatePassword", test.in.Password),
+				mock.Call("ValidatePassword", test.req.Password),
 				mock.Call("ValidateSchema", mock.NotNil),
 			)
 		}
@@ -136,8 +146,8 @@ func TestCreate(t *testing.T) {
 
 	t.Run("OK", func(t *testing.T) {
 		tests := []struct {
-			in  *CreateRequest
-			out *User
+			req  *CreateRequest
+			user *User
 		}{{
 			&CreateRequest{"admin", "123456789", "admin@admin.com"},
 			&User{
@@ -154,7 +164,7 @@ func TestCreate(t *testing.T) {
 
 		for i, test := range tests {
 			mockServ := newMockService()
-			user, err := mockServ.Create(test.in)
+			user, err := mockServ.Create(test.req)
 
 			// Response
 			if err != nil || user == nil {
@@ -163,11 +173,11 @@ func TestCreate(t *testing.T) {
 			}
 
 			// Properties
-			if user.Username != test.out.Username || user.Email != test.out.Email {
-				t.Errorf("test %d:\n-expected:%s - %s\n-actual:  %s - %s", i, test.out.Username, test.out.Email, user.Username, user.Email)
+			if user.Username != test.user.Username || user.Email != test.user.Email {
+				t.Errorf("test %d:\n-expected:%s - %s\n-actual:  %s - %s", i, test.user.Username, test.user.Email, user.Username, user.Email)
 			}
 
-			if user.Password == test.in.Password || len(user.Password) < 10 {
+			if user.Password == test.req.Password || len(user.Password) < 10 {
 				t.Errorf("test %d: password wrong hashing: %s", i, user.Password)
 			}
 
@@ -177,14 +187,14 @@ func TestCreate(t *testing.T) {
 
 			// Validator
 			mockServ.validator.Mock.Assert(t,
-				mock.Call("ValidatePassword", test.in.Password).Return(nil),
+				mock.Call("ValidatePassword", test.req.Password).Return(nil),
 				mock.Call("ValidateSchema", user).Return(nil),
 			)
 
 			// Repository
 			mockServ.repo.Mock.Assert(t,
-				mock.Call("FindByUsername", test.in.Username).Return(mock.Nil, mock.NotNil),
-				mock.Call("FindByEmail", test.in.Email).Return(mock.Nil, mock.NotNil),
+				mock.Call("FindByUsername", test.req.Username).Return(mock.Nil, mock.NotNil),
+				mock.Call("FindByEmail", test.req.Email).Return(mock.Nil, mock.NotNil),
 				mock.Call("Insert", mock.NotNil).Return(nil),
 			)
 			insertedUser, ok := mockServ.repo.Mock.Calls[2].Args[0].(*User)
@@ -193,7 +203,11 @@ func TestCreate(t *testing.T) {
 				continue
 			}
 			if !reflect.DeepEqual(user, insertedUser) {
-				t.Errorf("test %d: inserted user not equal returned user\n-expected:%#v\n-actual:  %#v", i, user, insertedUser)
+				t.Errorf("test %d: inserted user is not equal to returned user\n-expected:%#v\n-actual:  %#v", i, user, insertedUser)
+			}
+			insertedUser = mockServ.repo.Collection[0]
+			if !reflect.DeepEqual(user, insertedUser) {
+				t.Errorf("test %d: inserted user is not equal to returned user\n-expected:%#v\n-actual:  %#v", i, user, insertedUser)
 			}
 
 			// Events
@@ -223,7 +237,9 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	user1 := newMockUser()
+	user1.Validated = true
 	user2 := newMockUser()
+	user2.Validated = true
 	user2.Username = "admin"
 	user2.Email = "admin@admin.com"
 	user2.Name = "Admin"
@@ -231,20 +247,145 @@ func TestUpdate(t *testing.T) {
 	user2.Roles = []Role{ADMIN}
 
 	t.Run("Error", func(t *testing.T) {
+		req1 := &UpdateRequest{
+			Name:     new(string),
+			Lastname: new(string),
+		}
+		*req1.Name = "11111"
+		*req1.Lastname = "22222"
+		req2 := &UpdateRequest{
+			Username: new(string),
+		}
+		*req2.Username = "admin"
+		req3 := &UpdateRequest{
+			Username: new(string),
+		}
+		*req3.Username = "user#1"
+		req4 := &UpdateRequest{
+			Password: new(string),
+		}
+		*req4.Password = "1234"
+		req5 := &UpdateRequest{
+			Email: new(string),
+		}
+		*req5.Email = "admin@admin"
+		req6 := &UpdateRequest{
+			Email: new(string),
+		}
+		*req6.Email = "admin@admin.com"
+		req7 := &UpdateRequest{
+			Username: new(string),
+			Email:    new(string),
+			Password: new(string),
+			Name:     new(string),
+		}
+		*req7.Username = "admin"
+		*req7.Email = "admin@admin.com"
+		*req7.Password = "1234"
+		*req7.Name = "Al@n"
+
 		tests := []struct {
-			in  *UpdateRequest
 			id  string
-			out error
+			req *UpdateRequest
+			err error
+		}{{
+			"123",
+			&UpdateRequest{},
+			ErrNotFound,
+		}, {
+			"123456",
+			req1,
+			ErrNotFound,
+		}, {
+			user1.ID.Hex(),
+			req1,
+			errors.Errors{ErrSchemaValidation},
+		}, {
+			user1.ID.Hex(),
+			req2,
+			errors.Errors{ErrNotAvailable},
+		}, {
+			user1.ID.Hex(),
+			req3,
+			errors.Errors{ErrSchemaValidation},
+		}, {
+			user1.ID.Hex(),
+			req4,
+			errors.Errors{ErrPasswordValidation},
+		}, {
+			user1.ID.Hex(),
+			req5,
+			errors.Errors{ErrSchemaValidation},
+		}, {
+			user1.ID.Hex(),
+			req6,
+			errors.Errors{ErrNotAvailable},
+		}, {
+			user1.ID.Hex(),
+			req7,
+			errors.Errors{ErrNotAvailable, ErrPasswordValidation, ErrSchemaValidation},
+		}}
+
+		for i, test := range tests {
+			mockServ := newMockService()
+			mockServ.repo.populate(user1, user2)
+			user, err := mockServ.Update(test.id, test.req)
+
+			if user != nil || err == nil {
+				t.Errorf("test %d: expected nil user and error\ngot: %#v - %#v", i, user, err)
+				continue
+			}
+
+			if !errors.Compare(err, test.err) {
+				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.err, err)
+			}
+
+			repoCalls := mock.Calls{mock.Call("FindByID", test.id)}
+			validatorCalls := mock.Calls{}
+
+			if test.id == user1.ID.Hex() {
+				if test.req.Username != nil {
+					repoCalls = append(repoCalls, mock.Call("FindByUsername", *test.req.Username))
+				}
+				if test.req.Password != nil {
+					validatorCalls = append(validatorCalls, mock.Call("ValidatePassword", *test.req.Password))
+				}
+				if test.req.Email != nil {
+					repoCalls = append(repoCalls, mock.Call("FindByEmail", *test.req.Email))
+				}
+
+				validatorCalls = append(validatorCalls, mock.Call("ValidateSchema", mock.NotNil))
+			}
+
+			mockServ.validator.Mock.Assert(t,
+				validatorCalls...,
+			)
+
+			mockServ.repo.Mock.Assert(t,
+				repoCalls...,
+			)
+		}
+	})
+
+	t.Run("OK", func(t *testing.T) {
+		tests := []struct {
+			id   string
+			req  *UpdateRequest
+			user *User
 		}{{}}
 
 		for i, test := range tests {
 			mockServ := newMockService()
 			mockServ.repo.populate(user1, user2)
-			user, err := mockServ.Update(test.id, test.in)
+			user, err := mockServ.Update(test.id, test.req)
 
-			if user != nil || err == nil {
-				t.Errorf("test %d: expected nil user", i)
+			if user == nil || err != nil {
+				t.Errorf("test %d: expected user, got error: %#v", i, err)
 				continue
+			}
+
+			if user.Username != test.user.Username || user.Email != test.user.Email {
+
 			}
 		}
 	})
