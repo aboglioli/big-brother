@@ -166,6 +166,7 @@ func (s *serviceImpl) Update(id string, req *UpdateRequest) (*User, error) {
 
 	// Emit event
 	userUpdatedEvent := NewUserEvent(user)
+	userUpdatedEvent.Type = "UserUpdated"
 	if err := s.events.Publish(userUpdatedEvent, &events.Options{"user", "user.updated", ""}); err != nil {
 		return nil, ErrUpdate.Wrap(err)
 	}

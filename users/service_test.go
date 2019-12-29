@@ -232,7 +232,6 @@ func TestCreate(t *testing.T) {
 			}
 		}
 	})
-
 }
 
 func TestUpdate(t *testing.T) {
@@ -368,11 +367,28 @@ func TestUpdate(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
+		req1 := &UpdateRequest{
+			Name:     new(string),
+			Lastname: new(string),
+		}
+		*req1.Name = "NewName"
+		*req1.Lastname = "NewLastname"
+
 		tests := []struct {
 			id   string
 			req  *UpdateRequest
 			user *User
-		}{{}}
+		}{{
+			user1.ID.Hex(),
+			req1,
+			&User{
+				Username: "user",
+				Password: "123456789",
+				Email:    "user@user.com",
+				Name:     "NewName",
+				Lastname: "NewLastname",
+			},
+		}}
 
 		for i, test := range tests {
 			mockServ := newMockService()
@@ -380,12 +396,55 @@ func TestUpdate(t *testing.T) {
 			user, err := mockServ.Update(test.id, test.req)
 
 			if user == nil || err != nil {
-				t.Errorf("test %d: expected user, got error: %#v", i, err)
+				t.Errorf("test %d: expected user with id %s, got error: %#v", i, user.ID.Hex(), err)
 				continue
 			}
 
-			if user.Username != test.user.Username || user.Email != test.user.Email {
+			if user.Username != test.user.Username || user.Email != test.user.Email || user.Name != test.user.Name || user.Lastname != test.user.Lastname {
+				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.user, user)
+			}
 
+			if !user.ComparePassword(test.user.Password) {
+				t.Errorf("test %d: password does not match", i)
+			}
+
+			repoCalls := mock.Calls{mock.Call("FindByID", test.id)}
+			validatorCalls := mock.Calls{}
+			if test.req.Username != nil {
+				repoCalls = append(repoCalls, mock.Call("FindByUsername", *test.req.Username))
+			}
+			if test.req.Password != nil {
+				validatorCalls = append(validatorCalls, mock.Call("ValidatePassword", test.req.Password))
+			}
+			if test.req.Email != nil {
+				repoCalls = append(repoCalls, mock.Call("FindByEmail", *test.req.Email))
+			}
+			repoCalls = append(repoCalls, mock.Call("Update", user))
+			validatorCalls = append(validatorCalls, mock.Call("ValidateSchema", user))
+
+			mockServ.repo.Mock.Assert(t, repoCalls...)
+			mockServ.validator.Mock.Assert(t, validatorCalls...)
+			mockServ.events.Mock.Assert(t, mock.Call("Publish", mock.NotNil, mock.NotNil))
+
+			// Events
+			mockServ.events.Mock.Assert(t,
+				mock.Call("Publish", mock.NotNil, mock.NotNil).Return(nil),
+			)
+			event, ok1 := mockServ.events.Mock.Calls[0].Args[0].(*UserEvent)
+			opts, ok2 := mockServ.events.Mock.Calls[0].Args[1].(*events.Options)
+
+			if !ok1 || !ok2 {
+				t.Error("invalid conversion")
+				continue
+			}
+			if event.Type != "UserUpdated" {
+				t.Errorf("test %d: invalid event type", i)
+			}
+			if !reflect.DeepEqual(user, event.User) {
+				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, user, event.User)
+			}
+			if opts.Exchange != "user" || opts.Route != "user.updated" || opts.Queue != "" {
+				t.Errorf("test %d: invalid event options %#v", i, opts)
 			}
 		}
 	})
