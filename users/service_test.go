@@ -449,3 +449,56 @@ func TestUpdate(t *testing.T) {
 		}
 	})
 }
+
+func TestDelete(t *testing.T) {
+	user1 := newMockUser()
+	user1.Validated = true
+	user2 := newMockUser()
+	user2.Validated = true
+	user2.Username = "admin"
+	user2.Email = "admin@admin.com"
+	user2.Name = "Admin"
+	user2.Lastname = "Admin"
+	user2.Roles = []Role{ADMIN}
+
+	t.Run("Error", func(t *testing.T) {
+		tests := []struct {
+			id  string
+			err error
+		}{{
+			"1234",
+			ErrNotFound,
+		}}
+
+		for i, test := range tests {
+			mockServ := newMockService()
+			mockServ.repo.populate(user1, user2)
+			err := mockServ.Delete(test.id)
+
+			if !errors.Compare(err, test.err) {
+				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.err, err)
+			}
+		}
+	})
+
+	t.Run("OK", func(t *testing.T) {
+		tests := []struct {
+			id string
+		}{{
+			user1.ID.Hex(),
+		}, {
+			user2.ID.Hex(),
+		}}
+
+		for i, test := range tests {
+			mockServ := newMockService()
+			mockServ.repo.populate(user1, user2)
+			err := mockServ.Delete(test.id)
+
+			if err != nil {
+				t.Errorf("test %d: error not expected %#v", i, err)
+			}
+		}
+	})
+
+}
