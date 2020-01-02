@@ -25,9 +25,9 @@ type Configuration struct {
 	RedisPassword string `json:"redisPassword"`
 	RedisDB       int    `json:"redisDb"`
 
-	AuthEnabled    bool   `json:"authEnabled"`
-	AuthURL        string `json:"authUrl"`
-	AuthHMACSecret []byte `json:"authHMACSecret"`
+	AuthEnabled bool   `json:"authEnabled"`
+	AuthURL     string `json:"authUrl"`
+	JWTSecret   []byte `json:"JWTSecret"`
 }
 
 var once sync.Once
@@ -50,8 +50,8 @@ func Get() Configuration {
 			RedisPassword: "",
 			RedisDB:       0,
 
-			AuthEnabled:    false,
-			AuthHMACSecret: []byte("my_secret_key"),
+			AuthEnabled: false,
+			JWTSecret:   []byte("my_secret_key"),
 		}
 
 		file, err := os.Open("config.json")

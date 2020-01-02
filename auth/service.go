@@ -7,9 +7,8 @@ import (
 
 // Errors
 var (
-	ErrCreate     = errors.Status.New("auth.service.create")
-	ErrValidation = errors.Status.New("auth.service.validate")
-	ErrInvalidate = errors.Status.New("auth.service.invalidate")
+	ErrCreate       = errors.Status.New("auth.service.create")
+	ErrUnauthorized = errors.Status.New("auth.service.unauthorized")
 )
 
 // Interfaces
@@ -32,7 +31,6 @@ func NewService(repo Repository) Service {
 
 func (s *serviceImpl) Create(user *users.User) (*Token, error) {
 	token := NewToken(user.ID.Hex())
-
 	if err := s.repo.Insert(token); err != nil {
 		return nil, ErrCreate.Wrap(err)
 	}
@@ -42,23 +40,26 @@ func (s *serviceImpl) Create(user *users.User) (*Token, error) {
 
 func (s *serviceImpl) Validate(tokenStr string) (*Token, error) {
 	token, err := decodeToken(tokenStr)
-
 	if err != nil {
-		return nil, ErrValidation.Wrap(err)
+		return nil, ErrUnauthorized.Wrap(err)
+	}
+
+	t, err := s.repo.FindByID(token.ID.Hex())
+	if t == nil || err != nil {
+		return nil, ErrUnauthorized.Wrap(err)
 	}
 
 	return token, nil
 }
 
 func (s *serviceImpl) Invalidate(tokenStr string) error {
-	token, err := decodeToken(tokenStr)
-
+	token, err := s.Validate(tokenStr)
 	if err != nil {
-		return ErrValidation.Wrap(err)
+		return err
 	}
 
 	if err := s.repo.Delete(token.ID.Hex()); err != nil {
-		return ErrValidation.Wrap(err)
+		return ErrUnauthorized.Wrap(err)
 	}
 
 	return nil

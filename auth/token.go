@@ -30,15 +30,15 @@ func NewToken(userID string) *Token {
 }
 
 func (t *Token) Encode() (string, error) {
+	config := config.Get()
+
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":        t.ID.Hex(),
 		"userId":    t.UserID,
-		"createdAt": t.CreatedAt,
+		"createdAt": t.CreatedAt.Format(time.RFC3339),
 	})
 
-	config := config.Get()
-	tokenStr, err := jwtToken.SignedString(config.AuthHMACSecret)
-
+	tokenStr, err := jwtToken.SignedString(config.JWTSecret)
 	if err != nil {
 		return "", ErrEncode.Wrap(err)
 	}
@@ -53,23 +53,34 @@ func decodeToken(tokenStr string) (*Token, error) {
 		}
 
 		config := config.Get()
-		return config.AuthHMACSecret, nil
+		return config.JWTSecret, nil
 	})
-
 	if err != nil {
 		return nil, ErrDecode.Wrap(err)
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		id := claims["id"].(primitive.ObjectID)
-		userID := claims["userId"].(string)
-		createdAt := claims["createdAt"].(time.Time)
-		return &Token{
-			ID:        id,
-			UserID:    userID,
-			CreatedAt: createdAt,
-		}, nil
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, ErrDecode
 	}
 
-	return nil, ErrDecode
+	idStr := claims["id"].(string)
+	userID := claims["userId"].(string)
+	createdAtStr := claims["createdAt"].(string)
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		return nil, ErrDecode.Wrap(err)
+	}
+
+	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
+	if err != nil {
+		return nil, ErrDecode.Wrap(err)
+	}
+
+	return &Token{
+		ID:        id,
+		UserID:    userID,
+		CreatedAt: createdAt,
+	}, nil
 }
