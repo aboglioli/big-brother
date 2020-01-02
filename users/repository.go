@@ -13,11 +13,6 @@ var (
 )
 
 // Interfaces
-type FindOptions struct {
-	Username string
-	Email    string
-}
-
 type Repository interface {
 	FindByID(id string) (*User, error)
 	FindByUsername(username string) (*User, error)
