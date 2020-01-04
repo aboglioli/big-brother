@@ -1,8 +1,11 @@
 package auth
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
-func TestCreateToken(t *testing.T) {
+func TestToken(t *testing.T) {
 	// Create
 	token := NewToken("1234")
 	if token == nil {
@@ -26,7 +29,9 @@ func TestCreateToken(t *testing.T) {
 		return
 	}
 
-	if token.ID.Hex() != decodedToken.ID.Hex() || token.UserID != decodedToken.UserID {
+	if token.ID.Hex() != decodedToken.ID.Hex() ||
+		token.UserID != decodedToken.UserID ||
+		token.CreatedAt.Format(time.RFC3339Nano) != decodedToken.CreatedAt.Format(time.RFC3339Nano) {
 		t.Errorf("token and decodedToken are not equal\n-expected:%#v\n-actual:  %#v", token, decodedToken)
 	}
 }

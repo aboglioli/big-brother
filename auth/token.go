@@ -35,7 +35,7 @@ func (t *Token) Encode() (string, error) {
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":        t.ID.Hex(),
 		"userId":    t.UserID,
-		"createdAt": t.CreatedAt.Format(time.RFC3339),
+		"createdAt": t.CreatedAt.Format(time.RFC3339Nano),
 	})
 
 	tokenStr, err := jwtToken.SignedString(config.JWTSecret)
@@ -73,7 +73,7 @@ func decodeToken(tokenStr string) (*Token, error) {
 		return nil, ErrDecode.Wrap(err)
 	}
 
-	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
+	createdAt, err := time.Parse(time.RFC3339Nano, createdAtStr)
 	if err != nil {
 		return nil, ErrDecode.Wrap(err)
 	}
