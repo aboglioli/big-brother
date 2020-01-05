@@ -1,8 +1,6 @@
 package auth
 
 import (
-	"fmt"
-
 	"github.com/aboglioli/big-brother/cache"
 	"github.com/aboglioli/big-brother/errors"
 )
@@ -33,7 +31,10 @@ func NewRepository(cache cache.Cache) Repository {
 }
 
 func (r *repositoryImpl) FindByID(tokenID string) (*Token, error) {
-	token := r.cache.Get(fmt.Sprintf("auth:%s", tokenID))
+	token := r.cache.Get(tokenID)
+	if token == nil {
+		return nil, ErrRepositoryNotFound
+	}
 	if t, ok := token.(*Token); ok {
 		return t, nil
 	}
@@ -42,11 +43,11 @@ func (r *repositoryImpl) FindByID(tokenID string) (*Token, error) {
 }
 
 func (r *repositoryImpl) Insert(token *Token) error {
-	r.cache.Set(fmt.Sprintf("auth:%s", token.ID.Hex()), token, cache.NoExpiration)
+	r.cache.Set(token.ID.Hex(), token, cache.NoExpiration)
 	return nil
 }
 
 func (r *repositoryImpl) Delete(tokenID string) error {
-	r.cache.Delete(fmt.Sprintf("auth:%s", tokenID))
+	r.cache.Delete(tokenID)
 	return nil
 }

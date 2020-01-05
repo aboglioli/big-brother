@@ -31,7 +31,7 @@ type Error struct {
 	Status  int     `json:"status,omitempty"`
 	Context Context `json:"context,omitempty"`
 	Fields  []Field `json:"fields,omitempty"`
-	Cause   error   `json:"-"`
+	Cause   error   `json:"cause,omitempty"`
 }
 
 func (t Type) New(code string) Error {
@@ -95,7 +95,11 @@ func (e Error) Wrap(err error) Error {
 }
 
 func (e Error) Error() string {
-	return fmt.Sprintf("code: %s - %s", e.Type, e.Code)
+	b, err := json.Marshal(e)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 func (err1 Error) Equals(err2 Error) bool {
@@ -106,6 +110,11 @@ func (err1 Error) Equals(err2 Error) bool {
 type Errors []error
 
 func (e Errors) Error() string {
+	// str := "Errors:"
+	// for i, err := range e {
+	// 	str = fmt.Sprintf("%s\n\t%d: %s", str, i, err.Error())
+	// }
+	// return str
 	b, err := json.Marshal(e)
 	if err != nil {
 		return ""

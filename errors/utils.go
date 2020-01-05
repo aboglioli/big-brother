@@ -1,5 +1,7 @@
 package errors
 
+import "fmt"
+
 func Compare(err1, err2 error) bool {
 	switch err1 := err1.(type) {
 	case Errors:
@@ -32,4 +34,18 @@ func Compare(err1, err2 error) bool {
 	}
 
 	return false
+}
+
+func Print(err error) string {
+	switch err := err.(type) {
+	case Errors:
+		str := "Errors:"
+		for i, err := range err {
+			str = fmt.Sprintf("%s\n\t%d: %s", str, i, Print(err))
+		}
+		return str
+	case Error:
+
+	}
+	return ""
 }
