@@ -3,6 +3,7 @@ package auth
 import (
 	"testing"
 
+	"github.com/aboglioli/big-brother/tools/mock"
 	"github.com/aboglioli/big-brother/users"
 )
 
@@ -19,7 +20,11 @@ func TestCreateToken(t *testing.T) {
 		t.Errorf("invaid token %#v", token)
 
 	}
-	rawSavedToken := serv.repo.cache.Get(token.ID.Hex())
+	serv.repo.Mock.Assert(t,
+		mock.Call("Insert", token).Return(mock.Nil),
+	)
+
+	rawSavedToken := serv.repo.Repo.cache.Get(token.ID.Hex())
 	if rawSavedToken == nil {
 		t.Errorf("token is not saved in repository")
 		return
@@ -68,7 +73,7 @@ func TestValidate(t *testing.T) {
 				t.Errorf("test %d: errors not expected: %s", i, err)
 				continue
 			}
-			serv.repo.Insert(token)
+			serv.repo.populate(token)
 
 			validatedToken, err := serv.Validate(tokenStr)
 			if validatedToken == nil || err != nil {
@@ -77,6 +82,10 @@ func TestValidate(t *testing.T) {
 			if validatedToken.ID.Hex() != token.ID.Hex() || validatedToken.UserID != token.UserID {
 				t.Errorf("test %d: tokens are not equal\n-expected:%#v\n-actual:  %#v", i, token, validatedToken)
 			}
+
+			serv.repo.Mock.Assert(t,
+				mock.Call("FindByID", token.ID.Hex()).Return(token, mock.Nil),
+			)
 		}
 	})
 }
@@ -109,12 +118,17 @@ func TestInvalidate(t *testing.T) {
 			if err != nil {
 				t.Errorf("test %d: error not expected: %s", i, err)
 			}
-			serv.repo.Insert(token)
+			serv.repo.populate(token)
 
 			err = serv.Invalidate(tokenStr)
 			if err != nil {
 				t.Errorf("test %d: error not expected: %s", i, err)
 			}
+
+			serv.repo.Mock.Assert(t,
+				mock.Call("FindByID", mock.NotNil).Return(mock.NotNil, mock.Nil),
+				mock.Call("Delete", token.ID.Hex()).Return(mock.Nil),
+			)
 		}
 	})
 }
