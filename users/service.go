@@ -20,7 +20,7 @@ var (
 type Service interface {
 	GetByID(id string) (*User, error)
 
-	Create(req *CreateRequest) (*User, error)
+	Register(req *RegisterRequest) (*User, error)
 	Update(id string, req *UpdateRequest) (*User, error)
 	Delete(id string) error
 }
@@ -44,13 +44,13 @@ func (s *serviceImpl) GetByID(id string) (*User, error) {
 	return s.getByID(id)
 }
 
-type CreateRequest struct {
+type RegisterRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Email    string `json:"email"`
 }
 
-func (s *serviceImpl) Create(req *CreateRequest) (*User, error) {
+func (s *serviceImpl) Register(req *RegisterRequest) (*User, error) {
 	errs := make(errors.Errors, 0)
 
 	// Is it available?

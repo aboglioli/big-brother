@@ -75,31 +75,31 @@ func TestGetByID(t *testing.T) {
 	}
 }
 
-func TestCreate(t *testing.T) {
+func TestRegister(t *testing.T) {
 	user := newMockUser()
 	user.Validated = true
 
 	t.Run("Error", func(t *testing.T) {
 		tests := []struct {
-			req *CreateRequest
+			req *RegisterRequest
 			err error
 		}{{
-			&CreateRequest{"admin", "1234567", "admin@admin.com"},
+			&RegisterRequest{"admin", "1234567", "admin@admin.com"},
 			errors.Errors{ErrPasswordValidation},
 		}, {
-			&CreateRequest{"user", "123456789", "admin@admi.com"},
+			&RegisterRequest{"user", "123456789", "admin@admi.com"},
 			errors.Errors{ErrNotAvailable},
 		}, {
-			&CreateRequest{"admin", "12345678", "user@user.com"},
+			&RegisterRequest{"admin", "12345678", "user@user.com"},
 			errors.Errors{ErrNotAvailable},
 		}, {
-			&CreateRequest{"user", "12345678", "user@user.com"},
+			&RegisterRequest{"user", "12345678", "user@user.com"},
 			errors.Errors{ErrNotAvailable},
 		}, {
-			&CreateRequest{"us€r", "1234", "user@user"},
+			&RegisterRequest{"us€r", "1234", "user@user"},
 			errors.Errors{ErrPasswordValidation, ErrSchemaValidation},
 		}, {
-			&CreateRequest{"user", "1234", "user@user"},
+			&RegisterRequest{"user", "1234", "user@user"},
 			errors.Errors{ErrNotAvailable, ErrPasswordValidation, ErrSchemaValidation},
 		}}
 
@@ -107,7 +107,7 @@ func TestCreate(t *testing.T) {
 			mockServ := newMockService()
 			existingUser := newMockUser()
 			mockServ.repo.populate(existingUser)
-			u, err := mockServ.Create(test.req)
+			u, err := mockServ.Register(test.req)
 
 			if err == nil || u != nil {
 				t.Errorf("test %d: expected error and nil user", i)
@@ -146,16 +146,16 @@ func TestCreate(t *testing.T) {
 
 	t.Run("OK", func(t *testing.T) {
 		tests := []struct {
-			req  *CreateRequest
+			req  *RegisterRequest
 			user *User
 		}{{
-			&CreateRequest{"admin", "123456789", "admin@admin.com"},
+			&RegisterRequest{"admin", "123456789", "admin@admin.com"},
 			&User{
 				Username: "admin",
 				Email:    "admin@admin.com",
 			},
 		}, {
-			&CreateRequest{"user", "asdqwe123", "user@user.com"},
+			&RegisterRequest{"user", "asdqwe123", "user@user.com"},
 			&User{
 				Username: "user",
 				Email:    "user@user.com",
@@ -164,7 +164,7 @@ func TestCreate(t *testing.T) {
 
 		for i, test := range tests {
 			mockServ := newMockService()
-			user, err := mockServ.Create(test.req)
+			user, err := mockServ.Register(test.req)
 
 			// Response
 			if err != nil || user == nil {
