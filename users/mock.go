@@ -3,8 +3,7 @@ package users
 import (
 	"time"
 
-	"github.com/aboglioli/big-brother/tools/events"
-	"github.com/aboglioli/big-brother/tools/mock"
+	"github.com/aboglioli/big-brother/mock"
 )
 
 // User
@@ -162,13 +161,13 @@ func copyUser(u *User) *User {
 type mockService struct {
 	*serviceImpl
 	repo      *mockRepository
-	events    *events.MockEventManager
+	events    *mock.EventManager
 	validator *mockValidator
 }
 
 func newMockService() *mockService {
 	repo := newMockRepository()
-	events := events.NewMockManager()
+	events := mock.NewMockEventManager()
 	validator := newMockValidator()
 	serv := &serviceImpl{
 		repo:      repo,

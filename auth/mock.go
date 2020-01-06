@@ -1,8 +1,7 @@
 package auth
 
 import (
-	"github.com/aboglioli/big-brother/cache"
-	"github.com/aboglioli/big-brother/tools/mock"
+	"github.com/aboglioli/big-brother/mock"
 )
 
 // Repository
@@ -12,7 +11,7 @@ type mockRepository struct {
 }
 
 func newMockRepository() *mockRepository {
-	cache := cache.NewInMemory("auth")
+	cache := mock.NewMockCache("auth")
 	return &mockRepository{
 		Repo: &repositoryImpl{cache},
 	}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/aboglioli/big-brother/errors"
 	"github.com/aboglioli/big-brother/events"
-	"github.com/aboglioli/big-brother/tools/mock"
+	"github.com/aboglioli/big-brother/mock"
 )
 
 func TestGetByID(t *testing.T) {

@@ -91,7 +91,7 @@ func (s *serviceImpl) Create(req *CreateRequest) (*User, error) {
 	}
 
 	// Emit event
-	userCreatedEvent := NewUserEvent(user)
+	userCreatedEvent := NewUserEvent(user, "UserCreated")
 	if err := s.events.Publish(userCreatedEvent, &events.Options{"user", "user.created", ""}); err != nil {
 		return nil, ErrCreate.Wrap(err)
 	}
@@ -165,8 +165,7 @@ func (s *serviceImpl) Update(id string, req *UpdateRequest) (*User, error) {
 	}
 
 	// Emit event
-	userUpdatedEvent := NewUserEvent(user)
-	userUpdatedEvent.Type = "UserUpdated"
+	userUpdatedEvent := NewUserEvent(user, "UserUpdated")
 	if err := s.events.Publish(userUpdatedEvent, &events.Options{"user", "user.updated", ""}); err != nil {
 		return nil, ErrUpdate.Wrap(err)
 	}
@@ -186,7 +185,7 @@ func (s *serviceImpl) Delete(id string) error {
 	}
 
 	// Emit event
-	userDeletedEvent := NewUserEvent(user)
+	userDeletedEvent := NewUserEvent(user, "UserDeleted")
 	if err := s.events.Publish(userDeletedEvent, &events.Options{"user", "user.deleted", ""}); err != nil {
 		return ErrDelete.Wrap(err)
 	}

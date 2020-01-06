@@ -9,10 +9,10 @@ type UserEvent struct {
 	User *User `json:"user"`
 }
 
-func NewUserEvent(u *User) *UserEvent {
+func NewUserEvent(u *User, eventType string) *UserEvent {
 	return &UserEvent{
 		Event: events.Event{
-			Type: "UserCreated",
+			Type: eventType,
 		},
 		User: u,
 	}
