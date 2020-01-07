@@ -3,12 +3,26 @@ package users
 import (
 	"time"
 
+	"github.com/aboglioli/big-brother/auth"
 	"github.com/aboglioli/big-brother/mock"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // User
-func newMockUser() *User {
+const (
+	userID  = "4af9f070eaf502a95c5271d4"
+	adminID = "4af9f070eaf502a95c5271d5"
+)
+
+func newMockUser(id string) *User {
 	user := NewUser()
+	if id != "" {
+		objID, err := primitive.ObjectIDFromHex(id)
+		if err != nil {
+			panic(err)
+		}
+		user.ID = objID
+	}
 	user.Username = "user"
 	user.SetPassword("123456789")
 	user.Email = "user@user.com"
@@ -157,23 +171,111 @@ func copyUser(u *User) *User {
 	return &copy
 }
 
+// Auth service
+type mockAuthService struct {
+	Mock          mock.Mock
+	userID        string
+	userToken     *auth.Token
+	userTokenStr  string
+	adminID       string
+	adminToken    *auth.Token
+	adminTokenStr string
+}
+
+func newMockAuthService() *mockAuthService {
+	userID := "4af9f070eaf502a95c5271d4"
+	userToken := auth.NewToken(userID)
+	userTokenStr, err := userToken.Encode()
+	if err != nil {
+		panic(err)
+	}
+	adminID := "4af9f070eaf502a95c5271d5"
+	adminToken := auth.NewToken(adminID)
+	adminTokenStr, err := adminToken.Encode()
+	if err != nil {
+		panic(err)
+	}
+	return &mockAuthService{
+		userID:        userID,
+		userToken:     userToken,
+		userTokenStr:  userTokenStr,
+		adminID:       adminID,
+		adminToken:    adminToken,
+		adminTokenStr: adminTokenStr,
+	}
+}
+
+func (s *mockAuthService) Create(userID string) (*auth.Token, error) {
+	call := mock.Call("Create", userID)
+
+	if userID == s.userID {
+		s.Mock.Called(call.Return(s.userToken, nil))
+		return s.userToken, nil
+	}
+
+	if userID == s.adminID {
+		s.Mock.Called(call.Return(s.adminToken, nil))
+		return s.adminToken, nil
+	}
+
+	s.Mock.Called(call.Return(nil, auth.ErrCreate))
+	return nil, auth.ErrCreate
+}
+
+func (s *mockAuthService) Validate(tokenStr string) (*auth.Token, error) {
+	call := mock.Call("Validate", tokenStr)
+
+	if tokenStr == s.userTokenStr {
+		s.Mock.Called(call.Return(s.userToken, nil))
+		return s.userToken, nil
+	}
+
+	if tokenStr == s.adminTokenStr {
+		s.Mock.Called(call.Return(s.adminToken, nil))
+		return s.adminToken, nil
+	}
+
+	s.Mock.Called(call.Return(nil, auth.ErrUnauthorized))
+	return nil, auth.ErrUnauthorized
+}
+
+func (s *mockAuthService) Invalidate(tokenStr string) error {
+	call := mock.Call("Invalidate", tokenStr)
+
+	if tokenStr == s.userTokenStr {
+		s.Mock.Called(call.Return(nil))
+		return nil
+	}
+
+	if tokenStr == s.adminTokenStr {
+		s.Mock.Called(call.Return(nil))
+		return nil
+	}
+
+	s.Mock.Called(call.Return(auth.ErrUnauthorized))
+	return auth.ErrUnauthorized
+}
+
 // Service
 type mockService struct {
 	*serviceImpl
 	repo      *mockRepository
 	events    *mock.EventManager
 	validator *mockValidator
+	authServ  *mockAuthService
 }
 
 func newMockService() *mockService {
 	repo := newMockRepository()
 	events := mock.NewMockEventManager()
 	validator := newMockValidator()
+	authServ := newMockAuthService()
 	serv := &serviceImpl{
 		repo:      repo,
 		events:    events,
 		validator: validator,
+		authServ:  authServ,
 	}
 
-	return &mockService{serv, repo, events, validator}
+	return &mockService{serv, repo, events, validator, authServ}
 }

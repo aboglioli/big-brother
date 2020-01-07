@@ -4,19 +4,18 @@ import (
 	"testing"
 
 	"github.com/aboglioli/big-brother/mock"
-	"github.com/aboglioli/big-brother/users"
 )
 
 func TestCreateToken(t *testing.T) {
 	serv := newMockService()
-	user := users.NewUser()
+	userID := "user123"
 
-	token, err := serv.Create(user)
+	token, err := serv.Create(userID)
 	if token == nil || err != nil {
 		t.Errorf("expected token, got error %#v", err)
 		return
 	}
-	if len(token.ID.Hex()) < 6 || token.UserID != user.ID.Hex() {
+	if len(token.ID.Hex()) < 6 || token.UserID != userID {
 		t.Errorf("invaid token %#v", token)
 
 	}
@@ -59,11 +58,11 @@ func TestValidate(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
-		user := users.NewUser()
+		userID := "user123"
 
 		tests := []struct {
 			userID string
-		}{{user.ID.Hex()}, {"123456"}}
+		}{{userID}, {"123456"}}
 
 		for i, test := range tests {
 			serv := newMockService()
@@ -106,10 +105,10 @@ func TestInvalidate(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
-		user := users.NewUser()
+		userID := "user123"
 		tests := []struct {
 			userID string
-		}{{user.ID.Hex()}, {"123456"}, {"abc123"}}
+		}{{userID}, {"123456"}, {"abc123"}}
 
 		for i, test := range tests {
 			serv := newMockService()

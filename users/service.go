@@ -1,6 +1,7 @@
 package users
 
 import (
+	"github.com/aboglioli/big-brother/auth"
 	"github.com/aboglioli/big-brother/errors"
 	"github.com/aboglioli/big-brother/events"
 )
@@ -14,6 +15,8 @@ var (
 	ErrNotAvailable = errors.Validation.New("user.not_available")
 	ErrUpdate       = errors.Status.New("user.service.update")
 	ErrDelete       = errors.Status.New("user.service.delete")
+	ErrInvalidUser  = errors.Status.New("user.service.invalid_user")
+	ErrInvalidLogin = errors.Validation.New("user.service.invalid_login")
 )
 
 // Interfaces
@@ -23,6 +26,9 @@ type Service interface {
 	Register(req *RegisterRequest) (*User, error)
 	Update(id string, req *UpdateRequest) (*User, error)
 	Delete(id string) error
+
+	Login(req *LoginRequest) (*auth.Token, error)
+	Logout(tokenStr string) error
 }
 
 // Implementations
@@ -30,13 +36,15 @@ type serviceImpl struct {
 	repo      Repository
 	events    events.Manager
 	validator Validator
+	authServ  auth.Service
 }
 
-func NewService(repo Repository, events events.Manager) Service {
+func NewService(repo Repository, events events.Manager, authServ auth.Service) Service {
 	return &serviceImpl{
 		repo:      repo,
 		events:    events,
 		validator: NewValidator(),
+		authServ:  authServ,
 	}
 }
 
@@ -188,6 +196,58 @@ func (s *serviceImpl) Delete(id string) error {
 	userDeletedEvent := NewUserEvent(user, "UserDeleted")
 	if err := s.events.Publish(userDeletedEvent, &events.Options{"user", "user.deleted", ""}); err != nil {
 		return ErrDelete.Wrap(err)
+	}
+
+	return nil
+}
+
+type LoginRequest struct {
+	Username *string `json:"username"`
+	Email    *string `json:"email"`
+	Password *string `json:"password"`
+}
+
+func (s *serviceImpl) Login(req *LoginRequest) (*auth.Token, error) {
+	vErr := ErrInvalidLogin
+	if req.Username == nil && req.Email == nil {
+		vErr = vErr.F("username", "required")
+	}
+	if req.Password == nil {
+		vErr = vErr.F("password", "required")
+	}
+	if len(vErr.Fields) > 0 {
+		return nil, vErr
+	}
+
+	var user *User
+	var err error
+	if req.Username != nil {
+		user, err = s.repo.FindByUsername(*req.Username)
+	} else if req.Email != nil {
+		user, err = s.repo.FindByEmail((*req.Email))
+	}
+
+	if user == nil || err != nil {
+		return nil, ErrInvalidUser.Wrap(err)
+	}
+
+	if !user.ComparePassword(*req.Password) {
+		return nil, ErrInvalidUser
+	}
+
+	token, err := s.authServ.Create(user.ID.Hex())
+	if err != nil {
+		return nil, ErrInvalidUser.Wrap(err)
+	}
+
+	return token, nil
+}
+
+func (s *serviceImpl) Logout(tokenStr string) error {
+	err := s.authServ.Invalidate(tokenStr)
+
+	if err != nil {
+		return ErrInvalidUser.Wrap(err)
 	}
 
 	return nil

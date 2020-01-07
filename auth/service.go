@@ -2,7 +2,6 @@ package auth
 
 import (
 	"github.com/aboglioli/big-brother/errors"
-	"github.com/aboglioli/big-brother/users"
 )
 
 // Errors
@@ -13,7 +12,7 @@ var (
 
 // Interfaces
 type Service interface {
-	Create(user *users.User) (*Token, error)
+	Create(userID string) (*Token, error)
 	Validate(tokenStr string) (*Token, error)
 	Invalidate(tokenStr string) error
 }
@@ -29,8 +28,8 @@ func NewService(repo Repository) Service {
 	}
 }
 
-func (s *serviceImpl) Create(user *users.User) (*Token, error) {
-	token := NewToken(user.ID.Hex())
+func (s *serviceImpl) Create(userID string) (*Token, error) {
+	token := NewToken(userID)
 	if err := s.repo.Insert(token); err != nil {
 		return nil, ErrCreate.Wrap(err)
 	}
