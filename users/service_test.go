@@ -81,23 +81,29 @@ func TestRegister(t *testing.T) {
 			req *RegisterRequest
 			err error
 		}{{
-			&RegisterRequest{"admin", "1234567", "admin@admin.com"},
+			&RegisterRequest{"admin", "1234567", "admin@admin.com", "Name", "Lastname"},
 			errors.Errors{ErrPasswordValidation},
 		}, {
-			&RegisterRequest{"user", "123456789", "admin@admi.com"},
+			&RegisterRequest{"user", "123456789", "admin@admi.com", "Name", "Lastname"},
 			errors.Errors{ErrNotAvailable},
 		}, {
-			&RegisterRequest{"admin", "12345678", "user@user.com"},
+			&RegisterRequest{"admin", "12345678", "user@user.com", "Name", "Lastname"},
 			errors.Errors{ErrNotAvailable},
 		}, {
-			&RegisterRequest{"user", "12345678", "user@user.com"},
+			&RegisterRequest{"user", "12345678", "user@user.com", "Name", "Lastname"},
 			errors.Errors{ErrNotAvailable},
 		}, {
-			&RegisterRequest{"us€r", "1234", "user@user"},
+			&RegisterRequest{"us€r", "1234", "user@user", "Name", "Lastname"},
 			errors.Errors{ErrPasswordValidation, ErrSchemaValidation},
 		}, {
-			&RegisterRequest{"user", "1234", "user@user"},
+			&RegisterRequest{"user", "1234", "user@user", "Name", "Lastname"},
 			errors.Errors{ErrNotAvailable, ErrPasswordValidation, ErrSchemaValidation},
+		}, {
+			&RegisterRequest{"new-user", "123456789", "user@new-user.com", "Alan1", "Lastname2"},
+			errors.Errors{ErrSchemaValidation},
+		}, {
+			&RegisterRequest{"user", "123456789", "user@new-user.com", "Alan1", "Lastname"},
+			errors.Errors{ErrNotAvailable, ErrSchemaValidation},
 		}}
 
 		for i, test := range tests {
@@ -111,7 +117,7 @@ func TestRegister(t *testing.T) {
 			}
 
 			if !errors.Compare(test.err, err) {
-				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.err, err)
+				t.Errorf("test %d:\n-expected:%s\n-actual:  %s", i, test.err, err)
 			}
 
 			call1 := mock.Call("FindByUsername", test.req.Username)
@@ -146,13 +152,13 @@ func TestRegister(t *testing.T) {
 			req  *RegisterRequest
 			user *User
 		}{{
-			&RegisterRequest{"admin", "123456789", "admin@admin.com"},
+			&RegisterRequest{"admin", "123456789", "admin@admin.com", "Admin", "Lastname"},
 			&User{
 				Username: "admin",
 				Email:    "admin@admin.com",
 			},
 		}, {
-			&RegisterRequest{"user", "asdqwe123", "user@user.com"},
+			&RegisterRequest{"user", "asdqwe123", "user@user.com", "User", "Lastname"},
 			&User{
 				Username: "user",
 				Email:    "user@user.com",

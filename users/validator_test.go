@@ -55,6 +55,8 @@ func TestValidateSchema(t *testing.T) {
 					{"username", "invalid", "required"},
 					{"password", "invalid", "required"},
 					{"email", "invalid", "required"},
+					{"name", "invalid", "required"},
+					{"lastname", "invalid", "required"},
 				},
 			},
 		}, {
@@ -66,6 +68,8 @@ func TestValidateSchema(t *testing.T) {
 					{"username", "invalid", "min"},
 					{"password", "invalid", "required"},
 					{"email", "invalid", "required"},
+					{"name", "invalid", "min"},
+					{"lastname", "invalid", "min"},
 				},
 			},
 		}, {
@@ -77,6 +81,8 @@ func TestValidateSchema(t *testing.T) {
 					{"username", "invalid", "required"},
 					{"password", "invalid", "required"},
 					{"email", "invalid", "email"},
+					{"name", "invalid", "required"},
+					{"lastname", "invalid", "required"},
 				},
 			},
 		}, {
@@ -131,7 +137,7 @@ func TestValidateSchema(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(err, test.out) {
-				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.out, err)
+				t.Errorf("test %d:\n-expected:%s\n-actual:  %s", i, test.out, err)
 			}
 		}
 	})

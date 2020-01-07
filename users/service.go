@@ -56,6 +56,8 @@ type RegisterRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Email    string `json:"email"`
+	Name     string `json:"name"`
+	Lastname string `json:"lastname"`
 }
 
 func (s *serviceImpl) Register(req *RegisterRequest) (*User, error) {
@@ -83,6 +85,8 @@ func (s *serviceImpl) Register(req *RegisterRequest) (*User, error) {
 	user.Username = req.Username
 	user.SetPassword(req.Password)
 	user.Email = req.Email
+	user.Name = req.Name
+	user.Lastname = req.Lastname
 
 	// Schema validation
 	if err := s.validator.ValidateSchema(user); err != nil {

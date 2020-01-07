@@ -24,8 +24,8 @@ type User struct {
 	Username string `json:"username" bson:"username" validate:"required,min=4,max=32,alphanumdash"`
 	Password string `json:"password" bson:"password" validate:"required"`
 	Email    string `json:"email" bson:"email" validate:"required,email"`
-	Name     string `json:"name" bson:"name" validate:"max=32,alphaspaces"`
-	Lastname string `json:"lastname" bson:"lastname" validate:"max=32,alphaspaces"`
+	Name     string `json:"name" bson:"name" validate:"required,min=2,max=32,alphaspaces"`
+	Lastname string `json:"lastname" bson:"lastname" validate:"required,min=2,max=32,alphaspaces"`
 	Roles    []Role `json:"roles" bson:"roles"`
 }
 
