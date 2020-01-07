@@ -27,6 +27,8 @@ type User struct {
 	Name     string `json:"name" bson:"name" validate:"required,min=2,max=32,alphaspaces"`
 	Lastname string `json:"lastname" bson:"lastname" validate:"required,min=2,max=32,alphaspaces"`
 	Roles    []Role `json:"roles" bson:"roles"`
+
+	Validated bool `json:"validated" bson:"validated"`
 }
 
 func NewUser() *User {

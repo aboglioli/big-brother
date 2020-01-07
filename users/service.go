@@ -10,7 +10,6 @@ import (
 var (
 	ErrNotFound     = errors.Status.New("user.service.not_found").S(404)
 	ErrNotValidated = errors.Status.New("user.service.not_validated")
-	ErrNotActive    = errors.Status.New("user.service.not_active")
 	ErrCreate       = errors.Status.New("user.service.create")
 	ErrNotAvailable = errors.Validation.New("user.not_available")
 	ErrUpdate       = errors.Status.New("user.service.update")
@@ -264,9 +263,6 @@ func (s *serviceImpl) getByID(id string) (*User, error) {
 	}
 	if !user.Validated {
 		return nil, ErrNotValidated.C("id", id)
-	}
-	if !user.Active {
-		return nil, ErrNotActive.C("id", id)
 	}
 
 	return user, nil

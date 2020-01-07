@@ -15,7 +15,6 @@ func TestGetByID(t *testing.T) {
 	user2.Validated = true
 	user3 := newMockUser("")
 	user3.Validated = true
-	user3.Active = false
 
 	tests := []struct {
 		id   string
@@ -41,10 +40,6 @@ func TestGetByID(t *testing.T) {
 		user2.ID.Hex(),
 		nil,
 		user2,
-	}, {
-		user3.ID.Hex(),
-		ErrNotActive,
-		user3,
 	}}
 
 	for i, test := range tests {
@@ -184,8 +179,8 @@ func TestRegister(t *testing.T) {
 				t.Errorf("test %d: password wrong hashing: %s", i, user.Password)
 			}
 
-			if !user.Enabled || !user.Active || user.Validated {
-				t.Errorf("test %d: %v - %v - %v", i, user.Enabled, user.Active, user.Validated)
+			if !user.Enabled || user.Validated {
+				t.Errorf("test %d: %v - %v", i, user.Enabled, user.Validated)
 			}
 
 			// Validator
@@ -247,6 +242,15 @@ func TestUpdate(t *testing.T) {
 	user2.Name = "Admin"
 	user2.Lastname = "Admin"
 	user2.Roles = []Role{ADMIN}
+	user3 := newMockUser("")
+	user3.Validated = false
+	user3.Username = "non-validated"
+	user3.Email = "non-validated@user.com"
+	user4 := newMockUser("")
+	user4.Validated = true
+	user4.Enabled = false
+	user4.Username = "non-enabled"
+	user4.Email = "non-enabled@user.com"
 
 	t.Run("Error", func(t *testing.T) {
 		req1 := &UpdateRequest{
@@ -285,6 +289,12 @@ func TestUpdate(t *testing.T) {
 		*req7.Email = "admin@admin.com"
 		*req7.Password = "1234"
 		*req7.Name = "Al@n"
+		req8 := &UpdateRequest{
+			Name:     new(string),
+			Lastname: new(string),
+		}
+		*req8.Name = "Hello"
+		*req8.Lastname = "World"
 
 		tests := []struct {
 			id  string
@@ -326,11 +336,19 @@ func TestUpdate(t *testing.T) {
 			user1.ID.Hex(),
 			req7,
 			errors.Errors{ErrNotAvailable, ErrPasswordValidation, ErrSchemaValidation},
+		}, {
+			user3.ID.Hex(),
+			req8,
+			ErrNotValidated,
+		}, {
+			user4.ID.Hex(),
+			req8,
+			ErrNotFound,
 		}}
 
 		for i, test := range tests {
 			mockServ := newMockService()
-			mockServ.repo.populate(user1, user2)
+			mockServ.repo.populate(user1, user2, user3)
 			user, err := mockServ.Update(test.id, test.req)
 
 			if user != nil || err == nil {
@@ -339,7 +357,7 @@ func TestUpdate(t *testing.T) {
 			}
 
 			if !errors.Compare(err, test.err) {
-				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.err, err)
+				t.Errorf("test %d:\n-expected:%s\n-actual:  %s", i, test.err, err)
 			}
 
 			repoCalls := mock.Calls{mock.Call("FindByID", test.id)}
@@ -359,13 +377,9 @@ func TestUpdate(t *testing.T) {
 				validatorCalls = append(validatorCalls, mock.Call("ValidateSchema", mock.NotNil))
 			}
 
-			mockServ.validator.Mock.Assert(t,
-				validatorCalls...,
-			)
+			mockServ.validator.Mock.Assert(t, validatorCalls...)
 
-			mockServ.repo.Mock.Assert(t,
-				repoCalls...,
-			)
+			mockServ.repo.Mock.Assert(t, repoCalls...)
 		}
 	})
 
@@ -616,6 +630,7 @@ func TestLogin(t *testing.T) {
 		for i, test := range tests {
 			serv := newMockService()
 			serv.repo.populate(user, admin)
+			serv.authServ.populate(user.ID.Hex(), admin.ID.Hex())
 
 			token, err := serv.Login(test.req)
 			if token != nil || err == nil {
@@ -701,6 +716,7 @@ func TestLogin(t *testing.T) {
 		for i, test := range tests {
 			serv := newMockService()
 			serv.repo.populate(user, admin)
+			serv.authServ.populate(user.ID.Hex(), admin.ID.Hex())
 
 			token, err := serv.Login(test.req)
 			if token == nil || err != nil {
@@ -730,6 +746,8 @@ func TestLogin(t *testing.T) {
 }
 
 func TestLogout(t *testing.T) {
+	user := newMockUser("")
+
 	t.Run("Error", func(t *testing.T) {
 		serv := newMockService()
 		err := serv.Logout("tokenInvalid123")
@@ -738,19 +756,101 @@ func TestLogout(t *testing.T) {
 		}
 
 		serv.authServ.Mock.Assert(t,
+			mock.Call("Validate", "tokenInvalid123").Return(mock.Nil, mock.NotNil),
 			mock.Call("Invalidate", "tokenInvalid123").Return(mock.NotNil),
 		)
 	})
 
 	t.Run("OK", func(t *testing.T) {
 		serv := newMockService()
-		err := serv.Logout(serv.authServ.userTokenStr)
+		serv.repo.populate(user)
+		serv.authServ.populate(user.ID.Hex())
+		tokenStr := serv.authServ.tokensStr[user.ID.Hex()]
+		token := serv.authServ.tokens[tokenStr]
+
+		err := serv.Logout(tokenStr)
 		if err != nil {
 			t.Errorf("error not expected")
 		}
 
 		serv.authServ.Mock.Assert(t,
-			mock.Call("Invalidate", serv.authServ.userTokenStr).Return(mock.Nil),
+			mock.Call("Validate", tokenStr).Return(token, mock.Nil),
+			mock.Call("Invalidate", tokenStr).Return(mock.Nil),
 		)
 	})
 }
+
+// func TestCurrent(t *testing.T) {
+// 	t.Run("Error", func(t *testing.T) {
+// 		user1 := newMockUser("")
+// 		user1.Validated = false
+// 		user2 := newMockUser("")
+// 		user2.Validated = true
+
+// 		user1Token := auth.NewToken(user1.ID.Hex())
+// 		user1TokenStr, err := user1Token.Encode()
+// 		if err != nil {
+// 			t.Errorf("error %s not expected", err)
+// 			return
+// 		}
+
+// 		user2Token := auth.NewToken(user2.ID.Hex())
+// 		user2TokenStr, err := user2Token.Encode()
+// 		if err != nil {
+// 			t.Errorf("error %s not expected", err)
+// 			return
+// 		}
+
+// 		serv := newMockService()
+// 		serv.authServ.userToken = user1Token
+// 		serv.authServ.userTokenStr = user1TokenStr
+// 		serv.authServ.adminToken = user2Token
+// 		serv.authServ.adminTokenStr = user2TokenStr
+
+// 		tests := []struct {
+// 			tokenStr string
+// 			err      error
+// 		}{{
+// 			"",
+// 			ErrNotLoggedIn,
+// 		}, {
+// 			"123123",
+// 			ErrNotLoggedIn,
+// 		}, {
+// 			"abc123",
+// 			ErrNotLoggedIn,
+// 		}, {
+// 			tokenStr,
+// 			ErrNotLoggedIn,
+// 		}}
+
+// 		for i, test := range tests {
+// 			serv := newMockService()
+// 			user, err := serv.Current(test.tokenStr)
+// 			if user != nil || err == nil {
+// 				t.Errorf("test %d, expected error, got user %#v", i, user)
+// 				continue
+// 			}
+// 		}
+
+// 	})
+
+// 	t.Run("OK", func(t *testing.T) {
+// 		serv := newMockService()
+
+// 		tests := []struct {
+// 			tokenStr string
+// 			userID   string
+// 		}{{
+// 			serv.authServ.userTokenStr,
+// 			serv.authServ.userID,
+// 		}, {
+// 			serv.authServ.adminTokenStr,
+// 			serv.authServ.adminID,
+// 		}}
+
+// 		for i, test := range tests {
+// 			user, err := serv.Current(test.tokenStr)
+// 		}
+// 	})
+// }

@@ -173,87 +173,73 @@ func copyUser(u *User) *User {
 
 // Auth service
 type mockAuthService struct {
-	Mock          mock.Mock
-	userID        string
-	userToken     *auth.Token
-	userTokenStr  string
-	adminID       string
-	adminToken    *auth.Token
-	adminTokenStr string
+	Mock      mock.Mock
+	tokensStr map[string]string
+	tokens    map[string]*auth.Token
 }
 
 func newMockAuthService() *mockAuthService {
-	userID := "4af9f070eaf502a95c5271d4"
-	userToken := auth.NewToken(userID)
-	userTokenStr, err := userToken.Encode()
-	if err != nil {
-		panic(err)
-	}
-	adminID := "4af9f070eaf502a95c5271d5"
-	adminToken := auth.NewToken(adminID)
-	adminTokenStr, err := adminToken.Encode()
-	if err != nil {
-		panic(err)
-	}
 	return &mockAuthService{
-		userID:        userID,
-		userToken:     userToken,
-		userTokenStr:  userTokenStr,
-		adminID:       adminID,
-		adminToken:    adminToken,
-		adminTokenStr: adminTokenStr,
+		tokensStr: make(map[string]string),
+		tokens:    make(map[string]*auth.Token),
 	}
 }
 
 func (s *mockAuthService) Create(userID string) (*auth.Token, error) {
 	call := mock.Call("Create", userID)
 
-	if userID == s.userID {
-		s.Mock.Called(call.Return(s.userToken, nil))
-		return s.userToken, nil
+	tokenStr, ok1 := s.tokensStr[userID]
+	token, ok2 := s.tokens[tokenStr]
+	if !ok1 || !ok2 {
+		s.Mock.Called(call.Return(nil, auth.ErrCreate))
+		return nil, auth.ErrCreate
 	}
 
-	if userID == s.adminID {
-		s.Mock.Called(call.Return(s.adminToken, nil))
-		return s.adminToken, nil
-	}
-
-	s.Mock.Called(call.Return(nil, auth.ErrCreate))
-	return nil, auth.ErrCreate
+	s.Mock.Called(call.Return(token, nil))
+	return token, nil
 }
 
 func (s *mockAuthService) Validate(tokenStr string) (*auth.Token, error) {
 	call := mock.Call("Validate", tokenStr)
 
-	if tokenStr == s.userTokenStr {
-		s.Mock.Called(call.Return(s.userToken, nil))
-		return s.userToken, nil
+	token, ok := s.tokens[tokenStr]
+	if !ok {
+		s.Mock.Called(call.Return(nil, auth.ErrUnauthorized))
+		return nil, auth.ErrUnauthorized
 	}
 
-	if tokenStr == s.adminTokenStr {
-		s.Mock.Called(call.Return(s.adminToken, nil))
-		return s.adminToken, nil
-	}
+	s.Mock.Called(call.Return(token, nil))
+	return token, nil
 
-	s.Mock.Called(call.Return(nil, auth.ErrUnauthorized))
-	return nil, auth.ErrUnauthorized
 }
 
 func (s *mockAuthService) Invalidate(tokenStr string) error {
 	call := mock.Call("Invalidate", tokenStr)
 
-	if tokenStr == s.userTokenStr {
-		s.Mock.Called(call.Return(nil))
-		return nil
+	token, err := s.Validate(tokenStr)
+	if err != nil {
+		s.Mock.Called(call.Return(err))
+		return err
 	}
 
-	if tokenStr == s.adminTokenStr {
-		s.Mock.Called(call.Return(nil))
-		return nil
-	}
+	delete(s.tokensStr, token.UserID)
+	delete(s.tokens, tokenStr)
 
-	s.Mock.Called(call.Return(auth.ErrUnauthorized))
-	return auth.ErrUnauthorized
+	s.Mock.Called(call.Return(nil))
+	return nil
+}
+
+func (s *mockAuthService) populate(userIDs ...string) {
+	for _, userID := range userIDs {
+		token := auth.NewToken(userID)
+		tokenStr, err := token.Encode()
+		if err != nil {
+			panic(err)
+		}
+
+		s.tokensStr[userID] = tokenStr
+		s.tokens[tokenStr] = token
+	}
 }
 
 // Service
