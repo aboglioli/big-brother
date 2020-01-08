@@ -247,9 +247,13 @@ func (s *serviceImpl) Login(req *LoginRequest) (*auth.Token, error) {
 }
 
 func (s *serviceImpl) Logout(tokenStr string) error {
-	err := s.authServ.Invalidate(tokenStr)
+	token, err := s.authServ.Invalidate(tokenStr)
 
 	if err != nil {
+		return ErrInvalidUser.Wrap(err)
+	}
+
+	if existing, err := s.repo.FindByID(token.UserID); existing == nil || err != nil {
 		return ErrInvalidUser.Wrap(err)
 	}
 

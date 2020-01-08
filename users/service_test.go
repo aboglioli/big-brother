@@ -802,7 +802,7 @@ func TestLogout(t *testing.T) {
 			if token != nil {
 				if msg := serv.authServ.Mock.AssertMsg(
 					mock.Call("Validate", tokenStr).Return(token, mock.Nil),
-					mock.Call("Invalidate", tokenStr).Return(mock.Nil),
+					mock.Call("Invalidate", tokenStr).Return(token, mock.Nil),
 				); msg != "" {
 					t.Errorf("test %d: %s", i, msg)
 				}
@@ -810,7 +810,7 @@ func TestLogout(t *testing.T) {
 			} else {
 				if msg := serv.authServ.Mock.AssertMsg(
 					mock.Call("Validate", tokenStr).Return(mock.Nil, mock.NotNil),
-					mock.Call("Invalidate", tokenStr).Return(mock.NotNil),
+					mock.Call("Invalidate", tokenStr).Return(mock.Nil, mock.NotNil),
 				); msg != "" {
 					t.Errorf("test %d: %s", i, msg)
 				}
@@ -833,7 +833,7 @@ func TestLogout(t *testing.T) {
 
 		serv.authServ.Mock.Assert(t,
 			mock.Call("Validate", tokenStr).Return(token, mock.Nil),
-			mock.Call("Invalidate", tokenStr).Return(mock.Nil),
+			mock.Call("Invalidate", tokenStr).Return(token, mock.Nil),
 		)
 	})
 }

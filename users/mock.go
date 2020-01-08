@@ -215,20 +215,20 @@ func (s *mockAuthService) Validate(tokenStr string) (*auth.Token, error) {
 
 }
 
-func (s *mockAuthService) Invalidate(tokenStr string) error {
+func (s *mockAuthService) Invalidate(tokenStr string) (*auth.Token, error) {
 	call := mock.Call("Invalidate", tokenStr)
 
 	token, err := s.Validate(tokenStr)
 	if err != nil {
-		s.Mock.Called(call.Return(err))
-		return err
+		s.Mock.Called(call.Return(nil, err))
+		return nil, err
 	}
 
 	delete(s.tokensStr, token.UserID)
 	delete(s.tokens, tokenStr)
 
-	s.Mock.Called(call.Return(nil))
-	return nil
+	s.Mock.Called(call.Return(token, nil))
+	return token, nil
 }
 
 func (s *mockAuthService) populate(userIDs ...string) {

@@ -97,8 +97,8 @@ func TestInvalidate(t *testing.T) {
 
 		for i, test := range tests {
 			serv := newMockService()
-			err := serv.Invalidate(test.tokenStr)
-			if err == nil {
+			token, err := serv.Invalidate(test.tokenStr)
+			if token != nil || err == nil {
 				t.Errorf("test %d: expected error", i)
 			}
 		}
@@ -119,9 +119,12 @@ func TestInvalidate(t *testing.T) {
 			}
 			serv.repo.populate(token)
 
-			err = serv.Invalidate(tokenStr)
+			invalidatedToken, err := serv.Invalidate(tokenStr)
 			if err != nil {
 				t.Errorf("test %d: error not expected: %s", i, err)
+			}
+			if token.ID.Hex() != invalidatedToken.ID.Hex() {
+				t.Errorf("test %d: different tokens", i)
 			}
 
 			serv.repo.Mock.Assert(t,

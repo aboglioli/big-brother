@@ -14,7 +14,7 @@ var (
 type Service interface {
 	Create(userID string) (*Token, error)
 	Validate(tokenStr string) (*Token, error)
-	Invalidate(tokenStr string) error
+	Invalidate(tokenStr string) (*Token, error)
 }
 
 // Implementations
@@ -51,15 +51,15 @@ func (s *serviceImpl) Validate(tokenStr string) (*Token, error) {
 	return token, nil
 }
 
-func (s *serviceImpl) Invalidate(tokenStr string) error {
+func (s *serviceImpl) Invalidate(tokenStr string) (*Token, error) {
 	token, err := s.Validate(tokenStr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := s.repo.Delete(token.ID.Hex()); err != nil {
-		return ErrUnauthorized.Wrap(err)
+		return nil, ErrUnauthorized.Wrap(err)
 	}
 
-	return nil
+	return token, nil
 }
