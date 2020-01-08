@@ -84,12 +84,15 @@ func TestMock(t *testing.T) {
 		},
 	}}
 
-	for _, test := range tests {
+	for i, test := range tests {
 		m := &mockStruct{}
 		for _, call := range test.in {
 			m.Called(call)
 		}
 
-		m.Assert(t, test.out...)
+		msg := m.Assert(test.out...)
+		if msg != "" {
+			t.Errorf("test %d:\n%s", i, msg)
+		}
 	}
 }

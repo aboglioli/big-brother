@@ -64,9 +64,11 @@ func TestGetByID(t *testing.T) {
 			}
 		}
 
-		mockServ.repo.Mock.Assert(t,
+		if msg := mockServ.repo.Mock.Assert(
 			mock.Call("FindByID", test.id),
-		)
+		); msg != "" {
+			t.Errorf("test %d: %s", i, msg)
+		}
 	}
 }
 
@@ -130,15 +132,19 @@ func TestRegister(t *testing.T) {
 				call2 = call2.Return(mock.Nil, mock.NotNil)
 			}
 
-			mockServ.repo.Mock.Assert(t,
+			if msg := mockServ.repo.Mock.Assert(
 				call1,
 				call2,
-			)
+			); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 
-			mockServ.validator.Mock.Assert(t,
+			if msg := mockServ.validator.Mock.Assert(
 				mock.Call("ValidatePassword", test.req.Password),
 				mock.Call("ValidateSchema", mock.NotNil),
-			)
+			); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 		}
 	})
 
@@ -184,17 +190,22 @@ func TestRegister(t *testing.T) {
 			}
 
 			// Validator
-			mockServ.validator.Mock.Assert(t,
+			if msg := mockServ.validator.Mock.Assert(
 				mock.Call("ValidatePassword", test.req.Password).Return(nil),
 				mock.Call("ValidateSchema", user).Return(nil),
-			)
+			); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 
 			// Repository
-			mockServ.repo.Mock.Assert(t,
+			if msg := mockServ.repo.Mock.Assert(
 				mock.Call("FindByUsername", test.req.Username).Return(mock.Nil, mock.NotNil),
 				mock.Call("FindByEmail", test.req.Email).Return(mock.Nil, mock.NotNil),
 				mock.Call("Insert", mock.NotNil).Return(nil),
-			)
+			); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
+
 			insertedUser, ok := mockServ.repo.Mock.Calls[2].Args[0].(*User)
 			if !ok {
 				t.Error("invalid conversion")
@@ -209,9 +220,11 @@ func TestRegister(t *testing.T) {
 			}
 
 			// Events
-			mockServ.events.Mock.Assert(t,
+			if msg := mockServ.events.Mock.Assert(
 				mock.Call("Publish", mock.NotNil, mock.NotNil).Return(nil),
-			)
+			); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 			event, ok1 := mockServ.events.Mock.Calls[0].Args[0].(*UserEvent)
 			opts, ok2 := mockServ.events.Mock.Calls[0].Args[1].(*events.Options)
 
@@ -377,9 +390,13 @@ func TestUpdate(t *testing.T) {
 				validatorCalls = append(validatorCalls, mock.Call("ValidateSchema", mock.NotNil))
 			}
 
-			mockServ.validator.Mock.Assert(t, validatorCalls...)
+			if msg := mockServ.validator.Mock.Assert(validatorCalls...); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 
-			mockServ.repo.Mock.Assert(t, repoCalls...)
+			if msg := mockServ.repo.Mock.Assert(repoCalls...); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 		}
 	})
 
@@ -439,14 +456,22 @@ func TestUpdate(t *testing.T) {
 			repoCalls = append(repoCalls, mock.Call("Update", user))
 			validatorCalls = append(validatorCalls, mock.Call("ValidateSchema", user))
 
-			mockServ.repo.Mock.Assert(t, repoCalls...)
-			mockServ.validator.Mock.Assert(t, validatorCalls...)
-			mockServ.events.Mock.Assert(t, mock.Call("Publish", mock.NotNil, mock.NotNil))
+			if msg := mockServ.repo.Mock.Assert(repoCalls...); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
+			if msg := mockServ.validator.Mock.Assert(validatorCalls...); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
+			if msg := mockServ.events.Mock.Assert(mock.Call("Publish", mock.NotNil, mock.NotNil)); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 
 			// Events
-			mockServ.events.Mock.Assert(t,
+			if msg := mockServ.events.Mock.Assert(
 				mock.Call("Publish", mock.NotNil, mock.NotNil).Return(nil),
-			)
+			); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 			event, ok1 := mockServ.events.Mock.Calls[0].Args[0].(*UserEvent)
 			opts, ok2 := mockServ.events.Mock.Calls[0].Args[1].(*events.Options)
 
@@ -516,9 +541,11 @@ func TestDelete(t *testing.T) {
 				t.Errorf("test %d: error not expected %#v", i, err)
 			}
 
-			mockServ.events.Mock.Assert(t,
+			if msg := mockServ.events.Mock.Assert(
 				mock.Call("Publish", mock.NotNil, mock.NotNil).Return(mock.Nil),
-			)
+			); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 			userEvent, ok1 := mockServ.events.Mock.Calls[0].Args[0].(*UserEvent)
 			opts, ok2 := mockServ.events.Mock.Calls[0].Args[1].(*events.Options)
 			if !ok1 || !ok2 {
@@ -665,7 +692,9 @@ func TestLogin(t *testing.T) {
 				repoCalls = append(repoCalls, mock.Call("FindByEmail", *test.req.Email))
 			}
 
-			serv.repo.Mock.Assert(t, repoCalls...)
+			if msg := serv.repo.Mock.Assert(repoCalls...); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 		}
 	})
 
@@ -748,11 +777,15 @@ func TestLogin(t *testing.T) {
 				repoCalls = append(repoCalls, mock.Call("FindByEmail", *test.req.Email).Return(mock.NotNil, mock.Nil))
 			}
 
-			serv.repo.Mock.Assert(t, repoCalls...)
+			if msg := serv.repo.Mock.Assert(repoCalls...); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 
-			serv.authServ.Mock.Assert(t,
+			if msg := serv.authServ.Mock.Assert(
 				mock.Call("Create", mock.NotNil).Return(mock.NotNil, mock.Nil),
-			)
+			); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 		}
 	})
 }
@@ -800,7 +833,7 @@ func TestLogout(t *testing.T) {
 			}
 
 			if token != nil {
-				if msg := serv.authServ.Mock.AssertMsg(
+				if msg := serv.authServ.Mock.Assert(
 					mock.Call("Validate", tokenStr).Return(token, mock.Nil),
 					mock.Call("Invalidate", tokenStr).Return(token, mock.Nil),
 				); msg != "" {
@@ -808,7 +841,7 @@ func TestLogout(t *testing.T) {
 				}
 
 			} else {
-				if msg := serv.authServ.Mock.AssertMsg(
+				if msg := serv.authServ.Mock.Assert(
 					mock.Call("Validate", tokenStr).Return(mock.Nil, mock.NotNil),
 					mock.Call("Invalidate", tokenStr).Return(mock.Nil, mock.NotNil),
 				); msg != "" {
@@ -831,10 +864,12 @@ func TestLogout(t *testing.T) {
 			t.Errorf("error not expected")
 		}
 
-		serv.authServ.Mock.Assert(t,
+		if msg := serv.authServ.Mock.Assert(
 			mock.Call("Validate", tokenStr).Return(token, mock.Nil),
 			mock.Call("Invalidate", tokenStr).Return(token, mock.Nil),
-		)
+		); msg != "" {
+			t.Errorf("%s", msg)
+		}
 	})
 }
 

@@ -2,7 +2,6 @@ package mock
 
 import (
 	"fmt"
-	"testing"
 )
 
 const (
@@ -39,15 +38,7 @@ func (m *Mock) Called(c call) {
 	m.Calls = append(m.Calls, c)
 }
 
-func (m *Mock) Assert(t *testing.T, calls ...call) {
-
-	msg := m.AssertMsg(calls...)
-	if msg != "" {
-		t.Fatal(msg)
-	}
-}
-
-func (m *Mock) AssertMsg(calls ...call) string {
+func (m *Mock) Assert(calls ...call) string {
 	if len(m.Calls) != len(calls) {
 		callsStr := "expected:\n"
 		for _, call := range calls {

@@ -19,9 +19,11 @@ func TestCreateToken(t *testing.T) {
 		t.Errorf("invaid token %#v", token)
 
 	}
-	serv.repo.Mock.Assert(t,
+	if msg := serv.repo.Mock.Assert(
 		mock.Call("Insert", token).Return(mock.Nil),
-	)
+	); msg != "" {
+		t.Errorf("%s", msg)
+	}
 
 	rawSavedToken := serv.repo.Repo.cache.Get(token.ID.Hex())
 	if rawSavedToken == nil {
@@ -82,9 +84,11 @@ func TestValidate(t *testing.T) {
 				t.Errorf("test %d: tokens are not equal\n-expected:%#v\n-actual:  %#v", i, token, validatedToken)
 			}
 
-			serv.repo.Mock.Assert(t,
+			if msg := serv.repo.Mock.Assert(
 				mock.Call("FindByID", token.ID.Hex()).Return(token, mock.Nil),
-			)
+			); msg != "" {
+				t.Errorf("test %d: %s", i, msg)
+			}
 		}
 	})
 }
@@ -127,10 +131,12 @@ func TestInvalidate(t *testing.T) {
 				t.Errorf("test %d: different tokens", i)
 			}
 
-			serv.repo.Mock.Assert(t,
+			if msg := serv.repo.Mock.Assert(
 				mock.Call("FindByID", mock.NotNil).Return(mock.NotNil, mock.Nil),
 				mock.Call("Delete", token.ID.Hex()).Return(mock.Nil),
-			)
+			); msg != "" {
+				t.Errorf("test %d, %s", i, msg)
+			}
 		}
 	})
 }
