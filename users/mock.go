@@ -162,7 +162,9 @@ func (r *mockRepository) Delete(id string) error {
 func (r *mockRepository) populate(users ...*User) {
 	r.Collection = make([]*User, 0)
 	for _, user := range users {
-		r.Collection = append(r.Collection, copyUser(user))
+		if user != nil {
+			r.Collection = append(r.Collection, copyUser(user))
+		}
 	}
 }
 

@@ -40,6 +40,14 @@ func (m *Mock) Called(c call) {
 }
 
 func (m *Mock) Assert(t *testing.T, calls ...call) {
+
+	msg := m.AssertMsg(calls...)
+	if msg != "" {
+		t.Fatal(msg)
+	}
+}
+
+func (m *Mock) AssertMsg(calls ...call) string {
 	if len(m.Calls) != len(calls) {
 		callsStr := "expected:\n"
 		for _, call := range calls {
@@ -50,16 +58,18 @@ func (m *Mock) Assert(t *testing.T, calls ...call) {
 		for _, call := range m.Calls {
 			callsStr += fmt.Sprintf("- %s %v -> %v\n", call.Func, call.Args, call.Ret)
 		}
-		t.Fatalf("MOCK: Different number of calls\n%s%s\n", callsStr, stackInfo())
+		return fmt.Sprintf("MOCK: Different number of calls\n%s%s\n", callsStr, stackInfo())
 	}
 
 	for i, call1 := range m.Calls {
 		call2 := calls[i]
 
 		if call1.Func != call2.Func || !compareArgs(call1.Args, call2.Args) || (len(call2.Ret) > 0 && !compareArgs(call1.Ret, call2.Ret)) {
-			t.Fatalf("MOCK:\nexpected: %s %v -> %v\nactual: %s %v -> %v\n%s\n", call2.Func, call2.Args, call2.Ret, call1.Func, call1.Args, call1.Ret, stackInfo())
+			return fmt.Sprintf("MOCK:\nexpected: %s %v -> %v\nactual: %s %v -> %v\n%s\n", call2.Func, call2.Args, call2.Ret, call1.Func, call1.Args, call1.Ret, stackInfo())
 		}
 	}
+
+	return ""
 }
 
 func (m *Mock) Reset() {

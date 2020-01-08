@@ -540,11 +540,14 @@ func TestDelete(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	user := newMockUser(userID)
-	admin := newMockUser(adminID)
-	admin.Username = "admin"
-	admin.SetPassword("admin1234")
-	admin.Email = "admin@admin.com"
+	user1 := newMockUser(userID)
+	user2 := newMockUser(adminID)
+	user2.Username = "admin"
+	user2.SetPassword("admin1234")
+	user2.Email = "admin@admin.com"
+	user3 := newMockUser("")
+	user3.Username = "other-user"
+	user3.Email = "other@user.com"
 
 	t.Run("Error", func(t *testing.T) {
 		req1 := &LoginRequest{
@@ -583,6 +586,12 @@ func TestLogin(t *testing.T) {
 		}
 		*req6.Email = "invalid@email.com"
 		*req6.Password = "invalid-password"
+		req7 := &LoginRequest{
+			Username: new(string),
+			Password: new(string),
+		}
+		*req7.Username = "other-user"
+		*req7.Password = "123456789"
 		allEmptyReq := &LoginRequest{}
 		emptyPasswordReq := &LoginRequest{
 			Username: new(string),
@@ -617,6 +626,9 @@ func TestLogin(t *testing.T) {
 			req6,
 			ErrInvalidUser,
 		}, {
+			req7,
+			ErrInvalidUser,
+		}, {
 			allEmptyReq,
 			ErrInvalidLogin,
 		}, {
@@ -629,8 +641,8 @@ func TestLogin(t *testing.T) {
 
 		for i, test := range tests {
 			serv := newMockService()
-			serv.repo.populate(user, admin)
-			serv.authServ.populate(user.ID.Hex(), admin.ID.Hex())
+			serv.repo.populate(user1, user2)
+			serv.authServ.populate(user1.ID.Hex(), user2.ID.Hex(), user3.ID.Hex())
 
 			token, err := serv.Login(test.req)
 			if token != nil || err == nil {
@@ -698,25 +710,25 @@ func TestLogin(t *testing.T) {
 			userID string
 		}{{
 			req1,
-			user.ID.Hex(),
+			user1.ID.Hex(),
 		}, {
 			req2,
-			user.ID.Hex(),
+			user1.ID.Hex(),
 		}, {
 			req3,
-			user.ID.Hex(),
+			user1.ID.Hex(),
 		}, {
 			req4,
-			admin.ID.Hex(),
+			user2.ID.Hex(),
 		}, {
 			req5,
-			admin.ID.Hex(),
+			user2.ID.Hex(),
 		}}
 
 		for i, test := range tests {
 			serv := newMockService()
-			serv.repo.populate(user, admin)
-			serv.authServ.populate(user.ID.Hex(), admin.ID.Hex())
+			serv.repo.populate(user1, user2)
+			serv.authServ.populate(user1.ID.Hex(), user2.ID.Hex())
 
 			token, err := serv.Login(test.req)
 			if token == nil || err != nil {
@@ -749,16 +761,62 @@ func TestLogout(t *testing.T) {
 	user := newMockUser("")
 
 	t.Run("Error", func(t *testing.T) {
-		serv := newMockService()
-		err := serv.Logout("tokenInvalid123")
-		if err == nil {
-			t.Errorf("expected error")
-		}
+		tests := []struct {
+			tokenStr func(serv *mockService) string
+			err      error
+		}{{
+			func(serv *mockService) string {
+				return "invalidToken123"
+			},
+			ErrInvalidUser,
+		}, {
+			func(serv *mockService) string {
+				serv.repo.populate(user)
+				return "user"
+			},
+			ErrInvalidUser,
+		}, {
+			func(serv *mockService) string {
+				serv.authServ.populate(user.ID.Hex())
+				return serv.authServ.tokensStr[user.ID.Hex()]
+			},
+			ErrInvalidUser,
+		}}
 
-		serv.authServ.Mock.Assert(t,
-			mock.Call("Validate", "tokenInvalid123").Return(mock.Nil, mock.NotNil),
-			mock.Call("Invalidate", "tokenInvalid123").Return(mock.NotNil),
-		)
+		for i, test := range tests {
+			serv := newMockService()
+			tokenStr := test.tokenStr(serv)
+			token := serv.authServ.tokens[tokenStr]
+
+			err := serv.Logout(tokenStr)
+			if err == nil {
+				t.Errorf("test %d: expected error", i)
+			}
+			if !errors.Compare(err, test.err) {
+				t.Errorf("test %d:\n-expected:%s\n-actual:  %s", i, test.err, err)
+			}
+			if len(serv.authServ.tokensStr) > 0 {
+				t.Errorf("test %d: token should be deleted", i)
+			}
+
+			if token != nil {
+				if msg := serv.authServ.Mock.AssertMsg(
+					mock.Call("Validate", tokenStr).Return(token, mock.Nil),
+					mock.Call("Invalidate", tokenStr).Return(mock.Nil),
+				); msg != "" {
+					t.Errorf("test %d: %s", i, msg)
+				}
+
+			} else {
+				if msg := serv.authServ.Mock.AssertMsg(
+					mock.Call("Validate", tokenStr).Return(mock.Nil, mock.NotNil),
+					mock.Call("Invalidate", tokenStr).Return(mock.NotNil),
+				); msg != "" {
+					t.Errorf("test %d: %s", i, msg)
+				}
+			}
+
+		}
 	})
 
 	t.Run("OK", func(t *testing.T) {
