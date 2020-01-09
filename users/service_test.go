@@ -14,7 +14,7 @@ func TestGetByID(t *testing.T) {
 	user2 := newMockUser("")
 	user2.Validated = true
 	user3 := newMockUser("")
-	user3.Validated = true
+	user3.Enabled = false
 
 	tests := []struct {
 		id   string
@@ -40,6 +40,10 @@ func TestGetByID(t *testing.T) {
 		user2.ID.Hex(),
 		nil,
 		user2,
+	}, {
+		user3.ID.Hex(),
+		ErrNotFound,
+		user3,
 	}}
 
 	for i, test := range tests {
@@ -49,9 +53,8 @@ func TestGetByID(t *testing.T) {
 
 		if err != nil {
 			if test.err != nil {
-				expectedErr := test.err.(errors.Error)
 				err := err.(errors.Error)
-				if expectedErr.Code != err.Code {
+				if !errors.Compare(test.err, err) {
 					t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.err, err)
 				}
 

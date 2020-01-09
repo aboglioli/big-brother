@@ -258,6 +258,7 @@ func newMockService() *mockService {
 	events := mock.NewMockEventManager()
 	validator := newMockValidator()
 	authServ := newMockAuthService()
+
 	serv := &serviceImpl{
 		repo:      repo,
 		events:    events,
