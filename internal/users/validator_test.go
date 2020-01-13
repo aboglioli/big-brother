@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/aboglioli/big-brother/errors"
+	"github.com/aboglioli/big-brother/pkg/errors"
 )
 
 func TestValidateSchema(t *testing.T) {

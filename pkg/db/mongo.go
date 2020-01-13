@@ -3,8 +3,8 @@ package db
 import (
 	"context"
 
-	"github.com/aboglioli/big-brother/config"
-	"github.com/aboglioli/big-brother/errors"
+	"github.com/aboglioli/big-brother/pkg/config"
+	"github.com/aboglioli/big-brother/pkg/errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )

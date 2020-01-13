@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/aboglioli/big-brother/mock"
+	"github.com/aboglioli/big-brother/pkg/mock"
 )
 
 // Repository

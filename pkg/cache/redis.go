@@ -3,7 +3,7 @@ package cache
 import (
 	"time"
 
-	"github.com/aboglioli/big-brother/config"
+	"github.com/aboglioli/big-brother/pkg/config"
 	"github.com/go-redis/redis/v7"
 )
 

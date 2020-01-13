@@ -4,9 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/aboglioli/big-brother/errors"
-	"github.com/aboglioli/big-brother/events"
-	"github.com/aboglioli/big-brother/mock"
+	"github.com/aboglioli/big-brother/pkg/errors"
+	"github.com/aboglioli/big-brother/pkg/events"
+	"github.com/aboglioli/big-brother/pkg/mock"
 )
 
 func TestGetByID(t *testing.T) {

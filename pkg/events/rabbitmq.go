@@ -3,8 +3,8 @@ package events
 import (
 	"encoding/json"
 
-	"github.com/aboglioli/big-brother/config"
-	"github.com/aboglioli/big-brother/errors"
+	"github.com/aboglioli/big-brother/pkg/config"
+	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/streadway/amqp"
 )
 

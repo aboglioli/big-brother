@@ -1,7 +1,7 @@
 package business
 
 import (
-	"github.com/aboglioli/big-brother/db/models"
+	"github.com/aboglioli/big-brother/pkg/db/models"
 )
 
 type Business struct {

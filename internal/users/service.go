@@ -1,9 +1,9 @@
 package users
 
 import (
-	"github.com/aboglioli/big-brother/auth"
-	"github.com/aboglioli/big-brother/errors"
-	"github.com/aboglioli/big-brother/events"
+	"github.com/aboglioli/big-brother/internal/auth"
+	"github.com/aboglioli/big-brother/pkg/errors"
+	"github.com/aboglioli/big-brother/pkg/events"
 )
 
 // Errors

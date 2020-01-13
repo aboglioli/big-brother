@@ -3,7 +3,7 @@ package mock
 import (
 	"time"
 
-	"github.com/aboglioli/big-brother/cache"
+	"github.com/aboglioli/big-brother/pkg/cache"
 )
 
 type Cache struct {

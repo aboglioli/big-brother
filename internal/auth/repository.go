@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"github.com/aboglioli/big-brother/cache"
-	"github.com/aboglioli/big-brother/errors"
+	"github.com/aboglioli/big-brother/pkg/cache"
+	"github.com/aboglioli/big-brother/pkg/errors"
 )
 
 // Errors

@@ -3,8 +3,8 @@ package users
 import (
 	"time"
 
-	"github.com/aboglioli/big-brother/auth"
-	"github.com/aboglioli/big-brother/mock"
+	"github.com/aboglioli/big-brother/internal/auth"
+	"github.com/aboglioli/big-brother/pkg/mock"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

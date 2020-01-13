@@ -3,7 +3,7 @@ package users
 import (
 	"regexp"
 
-	"github.com/aboglioli/big-brother/errors"
+	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/go-playground/validator/v10"
 	"github.com/iancoleman/strcase"
 )

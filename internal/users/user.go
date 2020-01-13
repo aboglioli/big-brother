@@ -3,8 +3,8 @@ package users
 import (
 	"encoding/json"
 
-	"github.com/aboglioli/big-brother/db/models"
-	"github.com/aboglioli/big-brother/errors"
+	"github.com/aboglioli/big-brother/pkg/db/models"
+	"github.com/aboglioli/big-brother/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 

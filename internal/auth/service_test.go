@@ -3,7 +3,7 @@ package auth
 import (
 	"testing"
 
-	"github.com/aboglioli/big-brother/mock"
+	"github.com/aboglioli/big-brother/pkg/mock"
 )
 
 func TestCreateToken(t *testing.T) {
