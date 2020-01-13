@@ -28,9 +28,9 @@ func TestMock(t *testing.T) {
 			Call("ThirdMethod", 1, "two"),
 		},
 		out: []call{
-			call{"FirstMethod", []interface{}{"one", "two"}, []interface{}{}},
-			call{"SecondMethod", []interface{}{"one", 2}, []interface{}{}},
-			call{"ThirdMethod", []interface{}{1, "two"}, []interface{}{}},
+			{"FirstMethod", []interface{}{"one", "two"}, []interface{}{}},
+			{"SecondMethod", []interface{}{"one", 2}, []interface{}{}},
+			{"ThirdMethod", []interface{}{1, "two"}, []interface{}{}},
 		},
 	}, {
 		in:  []call{Call("WithAny", 1, Any, 3)},
@@ -42,7 +42,7 @@ func TestMock(t *testing.T) {
 		},
 		out: []call{
 			Call("One", 1, Any),
-			call{"Two", []interface{}{Any, 2}, []interface{}{}},
+			{"Two", []interface{}{Any, 2}, []interface{}{}},
 		},
 	}, {
 		in: []call{
