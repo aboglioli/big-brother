@@ -3,6 +3,7 @@ package users
 import (
 	"encoding/json"
 
+	"github.com/aboglioli/big-brother/pkg/config"
 	"github.com/aboglioli/big-brother/pkg/db/models"
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
@@ -39,7 +40,8 @@ func NewUser() *User {
 }
 
 func (u *User) SetPassword(pwd string) error {
-	hash, err := bcrypt.GenerateFromPassword([]byte(pwd), bcrypt.DefaultCost)
+	config := config.Get()
+	hash, err := bcrypt.GenerateFromPassword([]byte(pwd), config.BcryptCost)
 	if err != nil {
 		return ErrSetPassword.M("cannot generate hash from password %s", pwd).C("password", pwd).Wrap(err)
 	}

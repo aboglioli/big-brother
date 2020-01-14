@@ -3,6 +3,10 @@ package errors
 import "fmt"
 
 func Compare(err1, err2 error) bool {
+	if err1 == nil && err2 == nil {
+		return true
+	}
+
 	switch err1 := err1.(type) {
 	case Errors:
 		err2, ok := err2.(Errors)

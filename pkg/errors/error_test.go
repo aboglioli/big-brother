@@ -2,11 +2,14 @@ package errors
 
 import (
 	"errors"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateError(t *testing.T) {
+	assert := assert.New(t)
+
 	tests := []struct {
 		in  error
 		out Error
@@ -58,16 +61,14 @@ func TestCreateError(t *testing.T) {
 
 	for i, test := range tests {
 		in, ok := test.in.(Error)
-		if !ok {
-			t.Errorf("test %d: %#v is not an Error", i, test.in)
-		}
-		if !reflect.DeepEqual(in, test.out) {
-			t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.out, test.in)
-		}
+		assert.True(ok, i)
+		assert.Equal(test.out, in, i)
 	}
 }
 
 func TestWrapError(t *testing.T) {
+	assert := assert.New(t)
+
 	err := errors.New("err")
 
 	tests := []struct {
@@ -86,21 +87,14 @@ func TestWrapError(t *testing.T) {
 
 	for i, test := range tests {
 		in, ok := test.in.(Error)
-		if !ok {
-			t.Errorf("test %d: %#v is not an Error", i, test.in)
-			continue
-		}
-		if in.Cause == nil {
-			t.Errorf("test %d: %#v should have a Cause", i, in)
-			continue
-		}
-		if !reflect.DeepEqual(in.Cause, test.out) {
-			t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.out, in.Cause)
-		}
+		assert.True(ok, i)
+		assert.Equal(test.out, in.Cause, i)
 	}
 }
 
 func TestReuseError(t *testing.T) {
+	assert := assert.New(t)
+
 	rawErr1 := errors.New("err1")
 	rawErr2 := errors.New("err2")
 
@@ -207,8 +201,6 @@ func TestReuseError(t *testing.T) {
 	}}
 
 	for i, test := range tests {
-		if !reflect.DeepEqual(test.in, test.out) {
-			t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.out, test.in)
-		}
+		assert.Equal(test.out, test.in, i)
 	}
 }

@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"golang.org/x/crypto/bcrypt"
 	"os"
 	"sync"
 )
@@ -27,7 +28,8 @@ type Configuration struct {
 
 	AuthEnabled bool   `json:"authEnabled"`
 	AuthURL     string `json:"authUrl"`
-	JWTSecret   []byte `json:"JWTSecret"`
+	JWTSecret   []byte `json:"jwtSecret"`
+	BcryptCost  int    `json:"bcryptCost"`
 }
 
 var once sync.Once
@@ -52,6 +54,7 @@ func Get() Configuration {
 
 			AuthEnabled: false,
 			JWTSecret:   []byte("my_secret_key"),
+			BcryptCost:  bcrypt.MinCost,
 		}
 
 		file, err := os.Open("config.json")

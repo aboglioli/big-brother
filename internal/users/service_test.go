@@ -7,10 +7,14 @@ import (
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/aboglioli/big-brother/pkg/events"
 	"github.com/aboglioli/big-brother/pkg/mock"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetByID(t *testing.T) {
+	assert := assert.New(t)
+
 	user1 := newMockUser("")
+	user1.Validated = false
 	user2 := newMockUser("")
 	user2.Validated = true
 	user3 := newMockUser("")
@@ -23,19 +27,19 @@ func TestGetByID(t *testing.T) {
 	}{{
 		"123",
 		ErrNotFound,
-		user1,
+		nil,
 	}, {
 		"abc1235",
 		ErrNotFound,
-		user1,
+		nil,
 	}, {
 		"xyz123",
 		ErrNotFound,
-		user1,
+		nil,
 	}, {
 		user1.ID.Hex(),
 		ErrNotValidated,
-		user1,
+		nil,
 	}, {
 		user2.ID.Hex(),
 		nil,
@@ -43,29 +47,18 @@ func TestGetByID(t *testing.T) {
 	}, {
 		user3.ID.Hex(),
 		ErrNotFound,
-		user3,
+		nil,
 	}}
 
 	for i, test := range tests {
 		mockServ := newMockService()
-		mockServ.repo.populate(test.user)
+		mockServ.repo.populate(user1, user2)
 		u, err := mockServ.GetByID(test.id)
 
-		if err != nil {
-			if test.err != nil {
-				err := err.(errors.Error)
-				if !errors.Compare(test.err, err) {
-					t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.err, err)
-				}
-
-			} else {
-				t.Errorf("test %d:\n-expected: nil error\n-actual:%#v", i, err)
-			}
-		} else {
-			if !reflect.DeepEqual(u, test.user) {
-				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.user, u)
-			}
+		if !assert.True(errors.Compare(test.err, err), i) {
+			t.Errorf("test %d:\n-expected:%s\n-actual:  %s", i, test.err, err)
 		}
+		assert.Equal(test.user, u, "test %d", i)
 
 		if msg := mockServ.repo.Mock.Assert(
 			mock.Call("FindByID", test.id),
@@ -77,6 +70,8 @@ func TestGetByID(t *testing.T) {
 
 func TestRegister(t *testing.T) {
 	t.Run("Error", func(t *testing.T) {
+		assert := assert.New(t)
+
 		tests := []struct {
 			req *RegisterRequest
 			err error
@@ -112,13 +107,10 @@ func TestRegister(t *testing.T) {
 			mockServ.repo.populate(existingUser)
 			u, err := mockServ.Register(test.req)
 
-			if err == nil || u != nil {
-				t.Errorf("test %d: expected error and nil user", i)
+			if assert.NotNil(err, i) {
+				assert.True(errors.Compare(test.err, err), i)
 			}
-
-			if !errors.Compare(test.err, err) {
-				t.Errorf("test %d:\n-expected:%s\n-actual:  %s", i, test.err, err)
-			}
+			assert.Nil(u, i)
 
 			call1 := mock.Call("FindByUsername", test.req.Username)
 			call2 := mock.Call("FindByEmail", test.req.Email)
@@ -152,6 +144,8 @@ func TestRegister(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
+		assert := assert.New(t)
+
 		tests := []struct {
 			req  *RegisterRequest
 			user *User
@@ -174,22 +168,13 @@ func TestRegister(t *testing.T) {
 			user, err := mockServ.Register(test.req)
 
 			// Response
-			if err != nil || user == nil {
-				t.Errorf("test %d: expected user, got error", i)
-				continue
-			}
-
-			// Properties
-			if user.Username != test.user.Username || user.Email != test.user.Email {
-				t.Errorf("test %d:\n-expected:%s - %s\n-actual:  %s - %s", i, test.user.Username, test.user.Email, user.Username, user.Email)
-			}
-
-			if user.Password == test.req.Password || len(user.Password) < 10 {
-				t.Errorf("test %d: password wrong hashing: %s", i, user.Password)
-			}
-
-			if !user.Enabled || user.Validated {
-				t.Errorf("test %d: %v - %v", i, user.Enabled, user.Validated)
+			assert.Nil(err, i)
+			if assert.NotNil(user, i) {
+				assert.Equal(test.user.Username, user.Username, i)
+				assert.Equal(test.user.Email, user.Email)
+				assert.NotEqual(test.req.Password, user.Password, i)
+				assert.True(user.Enabled, i)
+				assert.False(user.Validated, i)
 			}
 
 			// Validator
@@ -269,6 +254,8 @@ func TestUpdate(t *testing.T) {
 	user4.Email = "non-enabled@user.com"
 
 	t.Run("Error", func(t *testing.T) {
+		assert := assert.New(t)
+
 		req1 := &UpdateRequest{
 			Name:     new(string),
 			Lastname: new(string),
@@ -367,14 +354,10 @@ func TestUpdate(t *testing.T) {
 			mockServ.repo.populate(user1, user2, user3)
 			user, err := mockServ.Update(test.id, test.req)
 
-			if user != nil || err == nil {
-				t.Errorf("test %d: expected nil user and error\ngot: %#v - %#v", i, user, err)
-				continue
+			if assert.NotNil(err, i) {
+				assert.True(errors.Compare(test.err, err), i)
 			}
-
-			if !errors.Compare(err, test.err) {
-				t.Errorf("test %d:\n-expected:%s\n-actual:  %s", i, test.err, err)
-			}
+			assert.Nil(user, i)
 
 			repoCalls := mock.Calls{mock.Call("FindByID", test.id)}
 			validatorCalls := mock.Calls{}
@@ -404,6 +387,8 @@ func TestUpdate(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
+		assert := assert.New(t)
+
 		req1 := &UpdateRequest{
 			Name:     new(string),
 			Lastname: new(string),
@@ -432,17 +417,13 @@ func TestUpdate(t *testing.T) {
 			mockServ.repo.populate(user1, user2)
 			user, err := mockServ.Update(test.id, test.req)
 
-			if user == nil || err != nil {
-				t.Errorf("test %d: expected user with id %s, got error: %#v", i, user.ID.Hex(), err)
-				continue
-			}
-
-			if user.Username != test.user.Username || user.Email != test.user.Email || user.Name != test.user.Name || user.Lastname != test.user.Lastname {
-				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.user, user)
-			}
-
-			if !user.ComparePassword(test.user.Password) {
-				t.Errorf("test %d: password does not match", i)
+			assert.Nil(err, i)
+			if assert.NotNil(user, i) {
+				assert.Equal(test.user.Username, user.Username, i)
+				assert.Equal(test.user.Email, user.Email, i)
+				assert.Equal(test.user.Name, user.Name, i)
+				assert.Equal(test.user.Lastname, user.Lastname, i)
+				assert.True(user.ComparePassword(test.user.Password), i)
 			}
 
 			repoCalls := mock.Calls{mock.Call("FindByID", test.id)}
@@ -507,6 +488,8 @@ func TestDelete(t *testing.T) {
 	user2.Roles = []Role{ADMIN}
 
 	t.Run("Error", func(t *testing.T) {
+		assert := assert.New(t)
+
 		tests := []struct {
 			id  string
 			err error
@@ -520,13 +503,13 @@ func TestDelete(t *testing.T) {
 			mockServ.repo.populate(user1, user2)
 			err := mockServ.Delete(test.id)
 
-			if !errors.Compare(err, test.err) {
-				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.err, err)
-			}
+			assert.True(errors.Compare(test.err, err), i)
 		}
 	})
 
 	t.Run("OK", func(t *testing.T) {
+		assert := assert.New(t)
+
 		tests := []struct {
 			id string
 		}{{
@@ -540,9 +523,7 @@ func TestDelete(t *testing.T) {
 			mockServ.repo.populate(user1, user2)
 			err := mockServ.Delete(test.id)
 
-			if err != nil {
-				t.Errorf("test %d: error not expected %#v", i, err)
-			}
+			assert.Nil(err)
 
 			if msg := mockServ.events.Mock.Assert(
 				mock.Call("Publish", mock.NotNil, mock.NotNil).Return(mock.Nil),
@@ -580,6 +561,8 @@ func TestLogin(t *testing.T) {
 	user3.Email = "other@user.com"
 
 	t.Run("Error", func(t *testing.T) {
+		assert := assert.New(t)
+
 		req1 := &LoginRequest{
 			Username: new(string),
 			Password: new(string),
@@ -675,14 +658,10 @@ func TestLogin(t *testing.T) {
 			serv.authServ.populate(user1.ID.Hex(), user2.ID.Hex(), user3.ID.Hex())
 
 			token, err := serv.Login(test.req)
-			if token != nil || err == nil {
-				t.Errorf("test %d: expected error", i)
-				continue
+			if assert.NotNil(err, i) {
+				assert.True(errors.Compare(test.err, err), i)
 			}
-
-			if !errors.Compare(err, test.err) {
-				t.Errorf("test %d: errors\n-expected:%#v\n-actual:  %#v", i, test.err, err)
-			}
+			assert.Nil(token, i)
 
 			if test.req.Password == nil {
 				continue
@@ -702,6 +681,8 @@ func TestLogin(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
+		assert := assert.New(t)
+
 		req1 := &LoginRequest{
 			Username: new(string),
 			Password: new(string),
@@ -763,13 +744,9 @@ func TestLogin(t *testing.T) {
 			serv.authServ.populate(user1.ID.Hex(), user2.ID.Hex())
 
 			token, err := serv.Login(test.req)
-			if token == nil || err != nil {
-				t.Errorf("test %d: expected token, got error %s", i, err)
-				continue
-			}
-
-			if token.UserID != test.userID {
-				t.Errorf("test %d: invalid token %#v", i, token)
+			assert.Nil(err)
+			if assert.NotNil(token) {
+				assert.Equal(test.userID, token.UserID)
 			}
 
 			repoCalls := mock.Calls{}
@@ -797,6 +774,8 @@ func TestLogout(t *testing.T) {
 	user := newMockUser("")
 
 	t.Run("Error", func(t *testing.T) {
+		assert := assert.New(t)
+
 		tests := []struct {
 			tokenStr func(serv *mockService) string
 			err      error
@@ -825,15 +804,10 @@ func TestLogout(t *testing.T) {
 			token := serv.authServ.tokens[tokenStr]
 
 			err := serv.Logout(tokenStr)
-			if err == nil {
-				t.Errorf("test %d: expected error", i)
+			if assert.NotNil(err, i) {
+				assert.True(errors.Compare(test.err, err), i)
 			}
-			if !errors.Compare(err, test.err) {
-				t.Errorf("test %d:\n-expected:%s\n-actual:  %s", i, test.err, err)
-			}
-			if len(serv.authServ.tokensStr) > 0 {
-				t.Errorf("test %d: token should be deleted", i)
-			}
+			assert.Len(serv.authServ.tokensStr, 0, i)
 
 			if token != nil {
 				if msg := serv.authServ.Mock.Assert(
@@ -856,6 +830,8 @@ func TestLogout(t *testing.T) {
 	})
 
 	t.Run("OK", func(t *testing.T) {
+		assert := assert.New(t)
+
 		serv := newMockService()
 		serv.repo.populate(user)
 		serv.authServ.populate(user.ID.Hex())
@@ -863,9 +839,7 @@ func TestLogout(t *testing.T) {
 		token := serv.authServ.tokens[tokenStr]
 
 		err := serv.Logout(tokenStr)
-		if err != nil {
-			t.Errorf("error not expected")
-		}
+		assert.Nil(err)
 
 		if msg := serv.authServ.Mock.Assert(
 			mock.Call("Validate", tokenStr).Return(token, mock.Nil),
@@ -875,78 +849,3 @@ func TestLogout(t *testing.T) {
 		}
 	})
 }
-
-// func TestCurrent(t *testing.T) {
-// 	t.Run("Error", func(t *testing.T) {
-// 		user1 := newMockUser("")
-// 		user1.Validated = false
-// 		user2 := newMockUser("")
-// 		user2.Validated = true
-
-// 		user1Token := auth.NewToken(user1.ID.Hex())
-// 		user1TokenStr, err := user1Token.Encode()
-// 		if err != nil {
-// 			t.Errorf("error %s not expected", err)
-// 			return
-// 		}
-
-// 		user2Token := auth.NewToken(user2.ID.Hex())
-// 		user2TokenStr, err := user2Token.Encode()
-// 		if err != nil {
-// 			t.Errorf("error %s not expected", err)
-// 			return
-// 		}
-
-// 		serv := newMockService()
-// 		serv.authServ.userToken = user1Token
-// 		serv.authServ.userTokenStr = user1TokenStr
-// 		serv.authServ.adminToken = user2Token
-// 		serv.authServ.adminTokenStr = user2TokenStr
-
-// 		tests := []struct {
-// 			tokenStr string
-// 			err      error
-// 		}{{
-// 			"",
-// 			ErrNotLoggedIn,
-// 		}, {
-// 			"123123",
-// 			ErrNotLoggedIn,
-// 		}, {
-// 			"abc123",
-// 			ErrNotLoggedIn,
-// 		}, {
-// 			tokenStr,
-// 			ErrNotLoggedIn,
-// 		}}
-
-// 		for i, test := range tests {
-// 			serv := newMockService()
-// 			user, err := serv.Current(test.tokenStr)
-// 			if user != nil || err == nil {
-// 				t.Errorf("test %d, expected error, got user %#v", i, user)
-// 				continue
-// 			}
-// 		}
-
-// 	})
-
-// 	t.Run("OK", func(t *testing.T) {
-// 		serv := newMockService()
-
-// 		tests := []struct {
-// 			tokenStr string
-// 			userID   string
-// 		}{{
-// 			serv.authServ.userTokenStr,
-// 			serv.authServ.userID,
-// 		}, {
-// 			serv.authServ.adminTokenStr,
-// 			serv.authServ.adminID,
-// 		}}
-
-// 		for i, test := range tests {
-// 			user, err := serv.Current(test.tokenStr)
-// 		}
-// 	})
-// }

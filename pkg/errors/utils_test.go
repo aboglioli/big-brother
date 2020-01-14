@@ -3,9 +3,13 @@ package errors
 import (
 	"errors"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCompare(t *testing.T) {
+	assert := assert.New(t)
+
 	tests := []struct {
 		err1        error
 		err2        error
@@ -62,11 +66,21 @@ func TestCompare(t *testing.T) {
 		Errors{errors.New("hi"), errors.New("bye"), Status.New("status").S(404)},
 		Errors{errors.New("hi"), errors.New("bye"), Internal.New("status1").S(404)},
 		false,
+	}, {
+		nil,
+		nil,
+		true,
+	}, {
+		nil,
+		Internal.New("nil"),
+		false,
+	}, {
+		Internal.New("nil"),
+		nil,
+		false,
 	}}
 
 	for i, test := range tests {
-		if Compare(test.err1, test.err2) != test.shouldEqual {
-			t.Errorf("test %d:\n%#v\n%#v\n(shouldEqual = %v)", i, test.err1, test.err2, test.shouldEqual)
-		}
+		assert.Equal(Compare(test.err1, test.err2), test.shouldEqual, i)
 	}
 }

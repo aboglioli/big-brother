@@ -1,16 +1,18 @@
 package users
 
 import (
-	"reflect"
 	"testing"
 
 	"github.com/aboglioli/big-brother/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateSchema(t *testing.T) {
 	validator := NewValidator()
 
 	t.Run("Error", func(t *testing.T) {
+		assert := assert.New(t)
+
 		user1 := NewUser()
 		user2 := NewUser()
 		user2.Username = "aaa"
@@ -130,19 +132,16 @@ func TestValidateSchema(t *testing.T) {
 			},
 		}}
 
-		for i, test := range tests {
+		for _, test := range tests {
 			err := validator.ValidateSchema(test.in)
-			if err == nil {
-				t.Errorf("test %d: expected error", i)
-			}
-
-			if !reflect.DeepEqual(err, test.out) {
-				t.Errorf("test %d:\n-expected:%s\n-actual:  %s", i, test.out, err)
-			}
+			assert.NotNil(err)
+			assert.Equal(err, test.out)
 		}
 	})
 
 	t.Run("OK", func(t *testing.T) {
+		assert := assert.New(t)
+
 		user1 := NewUser()
 		user1.Username = "user"
 		user1.Password = "pwd"
@@ -158,17 +157,17 @@ func TestValidateSchema(t *testing.T) {
 
 		tests := []*User{user1, user2}
 
-		for i, test := range tests {
+		for _, test := range tests {
 			err := validator.ValidateSchema(test)
-			if err != nil {
-				t.Errorf("test %d: user %#v should be created successful\n-err:%#v", i, test, err)
-			}
+			assert.Nil(err)
 		}
 	})
 
 }
 
 func TestValidatePassword(t *testing.T) {
+	assert := assert.New(t)
+
 	validator := NewValidator()
 
 	tests := []struct {
@@ -188,10 +187,8 @@ func TestValidatePassword(t *testing.T) {
 		nil,
 	}}
 
-	for i, test := range tests {
+	for _, test := range tests {
 		err := validator.ValidatePassword(test.in)
-		if !reflect.DeepEqual(err, test.out) {
-			t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, test.out, err)
-		}
+		assert.Equal(err, test.out)
 	}
 }

@@ -2,11 +2,14 @@ package errors
 
 import (
 	"errors"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBuildStack(t *testing.T) {
+	assert := assert.New(t)
+
 	tests := []struct {
 		in   error
 		opts *StackOptions
@@ -187,8 +190,6 @@ func TestBuildStack(t *testing.T) {
 
 	for i, test := range tests {
 		stack := BuildStack(test.in, test.opts)
-		if !reflect.DeepEqual(stack, test.out) {
-			t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v\n-options: %+v", i, test.out, stack, test.opts)
-		}
+		assert.Equal(test.out, stack, i)
 	}
 }

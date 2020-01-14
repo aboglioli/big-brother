@@ -4,21 +4,22 @@ import (
 	"testing"
 
 	"github.com/aboglioli/big-brother/pkg/mock"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateToken(t *testing.T) {
+	assert := assert.New(t)
+
 	serv := newMockService()
 	userID := "user123"
 
 	token, err := serv.Create(userID)
-	if token == nil || err != nil {
-		t.Errorf("expected token, got error %#v", err)
-		return
+	assert.Nil(err)
+	if assert.NotNil(token) {
+		assert.NotEmpty(token.ID.Hex())
+		assert.Equal(token.UserID, userID)
 	}
-	if len(token.ID.Hex()) < 6 || token.UserID != userID {
-		t.Errorf("invaid token %#v", token)
 
-	}
 	if msg := serv.repo.Mock.Assert(
 		mock.Call("Insert", token).Return(mock.Nil),
 	); msg != "" {
@@ -26,40 +27,36 @@ func TestCreateToken(t *testing.T) {
 	}
 
 	rawSavedToken := serv.repo.Repo.cache.Get(token.ID.Hex())
-	if rawSavedToken == nil {
-		t.Errorf("token is not saved in repository")
-		return
+	assert.NotNil(rawSavedToken)
 
-	}
 	savedToken, ok := rawSavedToken.(*Token)
-	if !ok {
-		t.Errorf("invalid conversion from repository")
-		return
-	}
-	if savedToken.ID.Hex() != token.ID.Hex() || savedToken.UserID != token.UserID {
-		t.Errorf("savedToken\n-expected:%#v\n-actual:  %#v", token, savedToken)
+	if assert.Equal(ok, true) {
+		assert.Equal(savedToken.ID.Hex(), token.ID.Hex())
+		assert.Equal(savedToken.UserID, token.UserID)
 	}
 }
 
 func TestValidate(t *testing.T) {
 	t.Run("Error", func(t *testing.T) {
+		assert := assert.New(t)
+
 		invalid := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjcmVhdGVkQXQiOiIyMDIwLTAxLTA1VDAxOjA3OjQxLjcxMTQ0ODY1Ni0wMzowMCIsImlkIjoiNWUxMTYxMGQzNTA1MjI0YTlmNzJmN2Q2IiwidXNlcklkIjoiMTIzNCJ9.fxg_UZMR8fBaVluRmekEslf453DlJ_oA_QX8fv3QkFQ"
 
 		tests := []struct {
 			tokenStr string
 		}{{""}, {"123"}, {"456789abc"}, {invalid}, {"123456789"}}
 
-		for i, test := range tests {
+		for _, test := range tests {
 			serv := newMockService()
 			token, err := serv.Validate(test.tokenStr)
-			if token != nil || err == nil {
-				t.Errorf("test %d: error expected, got token", i)
-				continue
-			}
+			assert.NotNil(err)
+			assert.Nil(token)
 		}
 	})
 
 	t.Run("OK", func(t *testing.T) {
+		assert := assert.New(t)
+
 		userID := "user123"
 
 		tests := []struct {
@@ -69,19 +66,16 @@ func TestValidate(t *testing.T) {
 		for i, test := range tests {
 			serv := newMockService()
 			token := NewToken(test.userID)
-			tokenStr, err := token.Encode()
-			if err != nil {
-				t.Errorf("test %d: errors not expected: %s", i, err)
-				continue
-			}
 			serv.repo.populate(token)
 
+			tokenStr, err := token.Encode()
+			assert.Nil(err)
+
 			validatedToken, err := serv.Validate(tokenStr)
-			if validatedToken == nil || err != nil {
-				t.Errorf("test %d: validated token expected, got error: %s", i, err)
-			}
-			if validatedToken.ID.Hex() != token.ID.Hex() || validatedToken.UserID != token.UserID {
-				t.Errorf("test %d: tokens are not equal\n-expected:%#v\n-actual:  %#v", i, token, validatedToken)
+			assert.Nil(err)
+			if assert.NotNil(validatedToken) {
+				assert.Equal(validatedToken.ID.Hex(), token.ID.Hex())
+				assert.Equal(validatedToken.UserID, token.UserID)
 			}
 
 			if msg := serv.repo.Mock.Assert(

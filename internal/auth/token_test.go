@@ -3,35 +3,27 @@ package auth
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestToken(t *testing.T) {
+	assert := assert.New(t)
 	// Create
 	token := NewToken("1234")
-	if token == nil {
-		t.Errorf("expected token\n")
-		return
-	}
+	assert.NotNil(token)
 
 	// Encode
 	tokenStr, err := token.Encode()
-	if err != nil {
-		t.Errorf("error not expected\ngot:%#v", err)
-	}
-	if len(tokenStr) < 10 {
-		t.Errorf("wrong tokenStr length\n")
-	}
+	assert.Nil(err)
+	assert.NotEmpty(tokenStr)
 
 	// Decode
 	decodedToken, err := decodeToken(tokenStr)
-	if err != nil {
-		t.Errorf("error not expected\ngot:%#v", err)
-		return
-	}
-
-	if token.ID.Hex() != decodedToken.ID.Hex() ||
-		token.UserID != decodedToken.UserID ||
-		token.CreatedAt.Format(time.RFC3339Nano) != decodedToken.CreatedAt.Format(time.RFC3339Nano) {
-		t.Errorf("token and decodedToken are not equal\n-expected:%#v\n-actual:  %#v", token, decodedToken)
+	assert.Nil(err)
+	if assert.NotNil(decodedToken) {
+		assert.Equal(token.ID, decodedToken.ID)
+		assert.Equal(token.UserID, decodedToken.UserID)
+		assert.Equal(token.CreatedAt.Format(time.RFC3339Nano), token.CreatedAt.Format(time.RFC3339Nano))
 	}
 }

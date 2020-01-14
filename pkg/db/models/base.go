@@ -16,9 +16,13 @@ type Base struct {
 
 func NewBase() Base {
 	return Base{
-		ID:        primitive.NewObjectID(),
+		ID:        NewID(),
 		Enabled:   true,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
+}
+
+func NewID() primitive.ObjectID {
+	return primitive.NewObjectID()
 }
