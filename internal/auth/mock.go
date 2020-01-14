@@ -1,53 +1,27 @@
 package auth
 
 import (
-	"github.com/aboglioli/big-brother/pkg/mock"
+	"github.com/stretchr/testify/mock"
 )
 
 // Repository
 type mockRepository struct {
-	Mock mock.Mock
-	Repo *repositoryImpl
-}
-
-func newMockRepository() *mockRepository {
-	cache := mock.NewMockCache("auth")
-	return &mockRepository{
-		Repo: &repositoryImpl{cache},
-	}
+	mock.Mock
 }
 
 func (m *mockRepository) FindByID(tokenID string) (*Token, error) {
-	call := mock.Call("FindByID", tokenID)
-
-	token, err := m.Repo.FindByID(tokenID)
-
-	m.Mock.Called(call.Return(token, err))
-	return token, err
+	args := m.Called(tokenID)
+	return args.Get(0).(*Token), args.Error(1)
 }
 
 func (m *mockRepository) Insert(token *Token) error {
-	call := mock.Call("Insert", token)
-
-	err := m.Repo.Insert(token)
-
-	m.Mock.Called(call.Return(err))
-	return err
+	args := m.Called(token)
+	return args.Error(0)
 }
 
 func (m *mockRepository) Delete(tokenID string) error {
-	call := mock.Call("Delete", tokenID)
-
-	err := m.Repo.Delete(tokenID)
-
-	m.Mock.Called(call.Return(err))
-	return err
-}
-
-func (m *mockRepository) populate(tokens ...*Token) {
-	for _, token := range tokens {
-		m.Repo.Insert(token)
-	}
+	args := m.Called(tokenID)
+	return args.Error(0)
 }
 
 // Service
@@ -57,7 +31,7 @@ type mockService struct {
 }
 
 func newMockService() *mockService {
-	repo := newMockRepository()
+	repo := &mockRepository{}
 	serv := &serviceImpl{
 		repo: repo,
 	}
