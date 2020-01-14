@@ -29,8 +29,6 @@ func TestValidate(t *testing.T) {
 	t.Run("Error", func(t *testing.T) {
 		assert := assert.New(t)
 
-		invalid := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjcmVhdGVkQXQiOiIyMDIwLTAxLTA1VDAxOjA3OjQxLjcxMTQ0ODY1Ni0wMzowMCIsImlkIjoiNWUxMTYxMGQzNTA1MjI0YTlmNzJmN2Q2IiwidXNlcklkIjoiMTIzNCJ9.fxg_UZMR8fBaVluRmekEslf453DlJ_oA_QX8fv3QkFQ"
-
 		tests := []struct {
 			tokenStr string
 			fn       func(*mockRepository)
@@ -44,7 +42,7 @@ func TestValidate(t *testing.T) {
 			"456789abc",
 			nil,
 		}, {
-			invalid,
+			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjcmVhdGVkQXQiOiIyMDIwLTAxLTA1VDAxOjA3OjQxLjcxMTQ0ODY1Ni0wMzowMCIsImlkIjoiNWUxMTYxMGQzNTA1MjI0YTlmNzJmN2Q2IiwidXNlcklkIjoiMTIzNCJ9.fxg_UZMR8fBaVluRmekEslf453DlJ_oA_QX8fv3QkFQ",
 			func(repo *mockRepository) {
 				repo.On("FindByID", "5e11610d3505224a9f72f7d6").Return(&Token{}, ErrUnauthorized)
 			},
