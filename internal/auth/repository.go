@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"encoding/json"
+
 	"github.com/aboglioli/big-brother/pkg/cache"
 	"github.com/aboglioli/big-brother/pkg/errors"
 )
@@ -31,20 +33,31 @@ func NewRepository(cache cache.Cache) Repository {
 }
 
 func (r *repositoryImpl) FindByID(tokenID string) (*Token, error) {
-	token, err := r.cache.Get(tokenID)
-	if token == nil || err != nil {
+	v, err := r.cache.Get(tokenID)
+	if v == nil || err != nil {
 		return nil, ErrRepositoryNotFound.Wrap(err)
 	}
-	if t, ok := token.(*Token); ok {
-		return t, nil
+
+	b, ok := v.([]byte)
+	if !ok {
+		return nil, ErrRepositoryNotFound.M("wrong conversion")
 	}
 
-	return nil, ErrRepositoryNotFound
+	token := &Token{}
+	if err := json.Unmarshal(b, token); err != nil {
+		return nil, ErrRepositoryNotFound.Wrap(err)
+	}
+
+	return token, nil
 }
 
 func (r *repositoryImpl) Insert(token *Token) error {
-	err := r.cache.Set(token.ID, token, cache.NoExpiration)
+	b, err := json.Marshal(token)
 	if err != nil {
+		return ErrRepositoryInsert.Wrap(err)
+	}
+
+	if err := r.cache.Set(token.ID, b, cache.NoExpiration); err != nil {
 		return ErrRepositoryInsert.Wrap(err)
 	}
 	return nil
