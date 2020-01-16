@@ -138,7 +138,7 @@ func TestRegister(t *testing.T) {
 		genReq(nil),
 		errors.Errors{ErrPasswordValidation, ErrSchemaValidation},
 		func(s *mockService) {
-			s.validator.On("ValidateSchema", mock.Anything).Return(ErrSchemaValidation)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(ErrSchemaValidation)
 			s.validator.On("ValidatePassword", "12345678").Return(ErrPasswordValidation)
 		},
 	}, {
@@ -148,7 +148,7 @@ func TestRegister(t *testing.T) {
 		}),
 		errors.Errors{ErrPasswordValidation},
 		func(s *mockService) {
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "1234567").Return(ErrPasswordValidation)
 		},
 	}, {
@@ -158,7 +158,7 @@ func TestRegister(t *testing.T) {
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(mUser, nil)
 			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "12345678").Return(nil)
 		},
 	}, {
@@ -168,7 +168,7 @@ func TestRegister(t *testing.T) {
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "12345678").Return(nil)
 		},
 	}, {
@@ -178,7 +178,7 @@ func TestRegister(t *testing.T) {
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(mUser, nil)
 			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "12345678").Return(nil)
 		},
 	}, {
@@ -188,9 +188,9 @@ func TestRegister(t *testing.T) {
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "12345678").Return(nil)
-			s.repo.On("Insert", mock.Anything).Return(ErrRepositoryInsert)
+			s.repo.On("Insert", mock.AnythingOfType("*users.User")).Return(ErrRepositoryInsert)
 		},
 	}, {
 		"error on publishing event",
@@ -199,10 +199,10 @@ func TestRegister(t *testing.T) {
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "12345678").Return(nil)
-			s.repo.On("Insert", mock.Anything).Return(nil)
-			s.events.On("Publish", mock.Anything, mock.Anything).Return(events.ErrPublish)
+			s.repo.On("Insert", mock.AnythingOfType("*users.User")).Return(nil)
+			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(events.ErrPublish)
 		},
 	}, {
 		"valid user",
@@ -211,10 +211,10 @@ func TestRegister(t *testing.T) {
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "12345678").Return(nil)
-			s.repo.On("Insert", mock.Anything).Return(nil)
-			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+			s.repo.On("Insert", mock.AnythingOfType("*users.User")).Return(nil)
+			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
 		},
 	}, {
 		"valid admin",
@@ -229,10 +229,10 @@ func TestRegister(t *testing.T) {
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "admin").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "admin@admin.com").Return(nil, ErrRepositoryNotFound)
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "123456789").Return(nil)
-			s.repo.On("Insert", mock.Anything).Return(nil)
-			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+			s.repo.On("Insert", mock.AnythingOfType("*users.User")).Return(nil)
+			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
 		},
 	}}
 
@@ -369,7 +369,7 @@ func TestUpdate(t *testing.T) {
 		func(s *mockService) {
 			u := copyUser(mUser)
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "1245").Return(ErrPasswordValidation)
 		},
 	}, {
@@ -386,7 +386,7 @@ func TestUpdate(t *testing.T) {
 			eUser.Username = "new-user"
 			s.repo.On("FindByUsername", "new-user").Return(eUser, nil)
 
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 		},
 	}, {
 		"email not available",
@@ -402,7 +402,7 @@ func TestUpdate(t *testing.T) {
 			eUser.Email = "new@email.com"
 			s.repo.On("FindByEmail", "new@email.com").Return(eUser, nil)
 
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 		},
 	}, {
 		"username and email not available",
@@ -421,7 +421,7 @@ func TestUpdate(t *testing.T) {
 			eu2.Email = "new@email.com"
 			s.repo.On("FindByUsername", "new-user").Return(eu1, nil)
 			s.repo.On("FindByEmail", "new@email.com").Return(eu2, nil)
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 		},
 	}, {
 		"valid update",
@@ -437,10 +437,10 @@ func TestUpdate(t *testing.T) {
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
 			s.repo.On("FindByUsername", "new-user").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "new@email.com").Return(nil, ErrRepositoryNotFound)
-			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "new-password").Return(nil)
-			s.repo.On("Update", mock.Anything).Return(nil)
-			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+			s.repo.On("Update", mock.AnythingOfType("*users.User")).Return(nil)
+			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
 		},
 	}}
 
@@ -516,7 +516,7 @@ func TestDelete(t *testing.T) {
 			u := copyUser(mUser)
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
 			s.repo.On("Delete", mUser.ID.Hex()).Return(nil)
-			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
 		},
 	}}
 
