@@ -103,7 +103,23 @@ func (e Error) Error() string {
 }
 
 func (err1 Error) Equals(err2 Error) bool {
-	return err1.Type == err2.Type && err1.Code == err2.Code
+	sameFields := true
+
+	if len(err1.Fields) > 0 {
+		if len(err1.Fields) != len(err2.Fields) {
+			return false
+		}
+
+		for i, field1 := range err1.Fields {
+			field2 := err2.Fields[i]
+			if field1.Field != field2.Field || field1.Code != field2.Code {
+				sameFields = false
+				break
+			}
+		}
+	}
+
+	return err1.Type == err2.Type && err1.Code == err2.Code && sameFields
 }
 
 // Errors is a collection of errors

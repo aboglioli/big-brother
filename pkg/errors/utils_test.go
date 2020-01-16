@@ -37,7 +37,7 @@ func TestCompare(t *testing.T) {
 	}, {
 		Internal.New("internal").C("one", "two").F("one", "two"),
 		Internal.New("internal").C("three", "four"),
-		true,
+		false,
 	}, {
 		Errors{Internal.New("internal_1"), Validation.New("validation_1").F("one", "two")},
 		Errors{Internal.New("internal_2"), Validation.New("validation_1").F("one", "two")},
@@ -45,7 +45,7 @@ func TestCompare(t *testing.T) {
 	}, {
 		Errors{Internal.New("internal_1"), Validation.New("validation_1").F("one", "two")},
 		Errors{Internal.New("internal_1"), Validation.New("validation_1").F("three", "four", "msg %d", 123)},
-		true,
+		false,
 	}, {
 		Errors{errors.New("hi"), errors.New("bye"), Status.New("status").S(404)},
 		Errors{errors.New("hi"), Status.New("status").S(404)},
@@ -78,9 +78,31 @@ func TestCompare(t *testing.T) {
 		Internal.New("nil"),
 		nil,
 		false,
+	}, {
+		Internal.New("internal_1"),
+		Internal.New("internal_1").F("field", "required"),
+		true,
+	}, {
+		Internal.New("internal_1").F("field", "required"),
+		Internal.New("internal_1"),
+		false,
+	}, {
+		Internal.New("internal_1").F("field", "required"),
+		Internal.New("internal_1").F("field", "required"),
+		true,
+	}, {
+		Internal.New("internal_1").F("field", "required", "msg %s", "random"),
+		Internal.New("internal_1").F("field", "required", "hello %s", "world"),
+		true,
+	}, {
+		Internal.New("internal_1").F("field", "required", "msg %s", "random"),
+		Internal.New("internal_1").F("field", "not_available", "hello %s", "world"),
+		false,
 	}}
 
 	for i, test := range tests {
-		assert.Equal(Compare(test.err1, test.err2), test.shouldEqual, i)
+		if !assert.Equal(Compare(test.err1, test.err2), test.shouldEqual, i) {
+			t.Errorf("Error %d:\nexpected: %s\nactual  : %s", i, test.err1, test.err2)
+		}
 	}
 }

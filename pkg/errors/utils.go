@@ -2,14 +2,14 @@ package errors
 
 import "testing"
 
-func Compare(err1, err2 error) bool {
-	if err1 == nil && err2 == nil {
+func Compare(expected, actual error) bool {
+	if expected == nil && actual == nil {
 		return true
 	}
 
-	switch err1 := err1.(type) {
+	switch err1 := expected.(type) {
 	case Errors:
-		err2, ok := err2.(Errors)
+		err2, ok := actual.(Errors)
 		if !ok {
 			return false
 		}
@@ -27,14 +27,14 @@ func Compare(err1, err2 error) bool {
 
 		return true
 	case Error:
-		err2, ok := err2.(Error)
+		err2, ok := actual.(Error)
 		if !ok {
 			return false
 		}
 
 		return err1.Equals(err2)
 	case error:
-		return err1.Error() == err2.Error()
+		return err1.Error() == actual.Error()
 	}
 
 	return false
@@ -42,6 +42,6 @@ func Compare(err1, err2 error) bool {
 
 func Assert(t *testing.T, expectedErr, actualErr error) {
 	if !Compare(expectedErr, actualErr) {
-		t.Errorf("Error assert:\nexpected: %s\nactual  : %s", expectedErr, actualErr)
+		t.Errorf("Error:\nexpected: %s\nactual  : %s", expectedErr, actualErr)
 	}
 }
