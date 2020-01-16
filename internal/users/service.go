@@ -62,24 +62,11 @@ type RegisterRequest struct {
 func (s *serviceImpl) Register(req *RegisterRequest) (*User, error) {
 	errs := make(errors.Errors, 0)
 
-	// Is it available?
-	vErr := ErrNotAvailable
-	if existing, _ := s.repo.FindByUsername(req.Username); existing != nil {
-		vErr = vErr.F("username", "not_available")
-	}
-	if existing, _ := s.repo.FindByEmail(req.Email); existing != nil {
-		vErr = vErr.F("email", "not_available")
-	}
-	if len(vErr.Fields) > 0 {
-		errs = append(errs, vErr)
-	}
-
 	// Password strength
 	if err := s.validator.ValidatePassword(req.Password); err != nil {
 		errs = append(errs, err)
 	}
 
-	// Create
 	user := NewUser()
 	user.Username = req.Username
 	user.SetPassword(req.Password)
@@ -94,6 +81,18 @@ func (s *serviceImpl) Register(req *RegisterRequest) (*User, error) {
 
 	if len(errs) > 0 {
 		return nil, errs
+	}
+
+	// Is it available?
+	vErr := ErrNotAvailable
+	if existing, _ := s.repo.FindByUsername(req.Username); existing != nil {
+		vErr = vErr.F("username", "not_available")
+	}
+	if existing, _ := s.repo.FindByEmail(req.Email); existing != nil {
+		vErr = vErr.F("email", "not_available")
+	}
+	if len(vErr.Fields) > 0 {
+		return nil, vErr
 	}
 
 	// Insert
@@ -125,27 +124,6 @@ func (s *serviceImpl) Update(id string, req *UpdateRequest) (*User, error) {
 	}
 
 	errs := make(errors.Errors, 0)
-	vErr := ErrNotAvailable
-	if req.Username != nil {
-		if existing, _ := s.repo.FindByUsername(*req.Username); existing != nil && existing.ID.Hex() != id {
-			vErr = vErr.F("username", "not_available")
-		} else {
-			user.Username = *req.Username
-		}
-	}
-	if req.Email != nil {
-		if existing, _ := s.repo.FindByEmail(*req.Email); existing != nil && existing.ID.Hex() != id {
-			vErr = vErr.F("email", "not_available")
-		} else {
-			user.Email = *req.Email
-			user.Validated = false
-		}
-	}
-
-	if len(vErr.Fields) > 0 {
-		errs = append(errs, vErr)
-	}
-
 	if req.Password != nil {
 		if err := s.validator.ValidatePassword(*req.Password); err != nil {
 			errs = append(errs, ErrPasswordValidation)
@@ -168,6 +146,27 @@ func (s *serviceImpl) Update(id string, req *UpdateRequest) (*User, error) {
 
 	if len(errs) > 0 {
 		return nil, errs
+	}
+
+	vErr := ErrNotAvailable
+	if req.Username != nil {
+		if existing, _ := s.repo.FindByUsername(*req.Username); existing != nil && existing.ID.Hex() != id {
+			vErr = vErr.F("username", "not_available")
+		} else {
+			user.Username = *req.Username
+		}
+	}
+	if req.Email != nil {
+		if existing, _ := s.repo.FindByEmail(*req.Email); existing != nil && existing.ID.Hex() != id {
+			vErr = vErr.F("email", "not_available")
+		} else {
+			user.Email = *req.Email
+			user.Validated = false
+		}
+	}
+
+	if len(vErr.Fields) > 0 {
+		return nil, vErr
 	}
 
 	// Update

@@ -136,7 +136,7 @@ func TestRegister(t *testing.T) {
 	}{{
 		"invalid schema and password",
 		genReq(nil),
-		errors.Errors{ErrSchemaValidation, ErrPasswordValidation},
+		errors.Errors{ErrPasswordValidation, ErrSchemaValidation},
 		func(s *mockService) {
 			s.validator.On("ValidateSchema", mock.Anything).Return(ErrSchemaValidation)
 			s.validator.On("ValidatePassword", "12345678").Return(ErrPasswordValidation)
@@ -154,7 +154,7 @@ func TestRegister(t *testing.T) {
 	}, {
 		"username not available",
 		genReq(nil),
-		errors.Errors{ErrNotAvailable},
+		ErrNotAvailable,
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(mUser, nil)
 			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
@@ -164,7 +164,7 @@ func TestRegister(t *testing.T) {
 	}, {
 		"email not available",
 		genReq(nil),
-		errors.Errors{ErrNotAvailable},
+		ErrNotAvailable,
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
@@ -174,7 +174,7 @@ func TestRegister(t *testing.T) {
 	}, {
 		"user and email not available",
 		genReq(nil),
-		errors.Errors{ErrNotAvailable},
+		ErrNotAvailable,
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(mUser, nil)
 			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
@@ -276,11 +276,11 @@ func TestUpdate(t *testing.T) {
 	mUser := mockUser()
 
 	genReq := func(cb func(req *UpdateRequest)) *UpdateRequest {
-		req := &UpdateRequest{
-			Name: utils.NewString("New name"),
-		}
+		req := &UpdateRequest{}
 		if cb != nil {
 			cb(req)
+		} else {
+			req.Name = utils.NewString("New name")
 		}
 		return req
 	}
@@ -323,10 +323,10 @@ func TestUpdate(t *testing.T) {
 		"invalid name and lastname",
 		mUser.ID.Hex(),
 		genReq(func(req *UpdateRequest) {
-			*req.Name = "11111"
-			*req.Lastname = "22222"
+			req.Name = utils.NewString("11111")
+			req.Lastname = utils.NewString("22222")
 		}),
-		ErrSchemaValidation,
+		errors.Errors{ErrSchemaValidation},
 		func(s *mockService) {
 			u := copyUser(mUser)
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
@@ -336,10 +336,10 @@ func TestUpdate(t *testing.T) {
 		"invalid username and email",
 		mUser.ID.Hex(),
 		genReq(func(req *UpdateRequest) {
-			*req.Username = "new user"
-			*req.Email = "inválid@-email.c"
+			req.Username = utils.NewString("new user")
+			req.Email = utils.NewString("inválid@-email.c")
 		}),
-		ErrSchemaValidation,
+		errors.Errors{ErrSchemaValidation},
 		func(s *mockService) {
 			u := copyUser(mUser)
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
@@ -349,50 +349,55 @@ func TestUpdate(t *testing.T) {
 		"invalid password",
 		mUser.ID.Hex(),
 		genReq(func(req *UpdateRequest) {
-			*req.Password = "1245"
+			req.Password = utils.NewString("1245")
 		}),
-		ErrPasswordValidation,
+		errors.Errors{ErrPasswordValidation},
 		func(s *mockService) {
 			u := copyUser(mUser)
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
 			s.validator.On("ValidatePassword", "1245").Return(ErrPasswordValidation)
 		},
 	}, {
 		"username not available",
 		mUser.ID.Hex(),
 		genReq(func(req *UpdateRequest) {
-			*req.Username = "new-user"
+			req.Username = utils.NewString("new-user")
 		}),
-		errors.Errors{ErrNotAvailable},
+		ErrNotAvailable,
 		func(s *mockService) {
 			u := copyUser(mUser)
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
 			eUser := mockUser()
 			eUser.Username = "new-user"
 			s.repo.On("FindByUsername", "new-user").Return(eUser, nil)
+
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
 		},
 	}, {
 		"email not available",
 		mUser.ID.Hex(),
 		genReq(func(req *UpdateRequest) {
-			*req.Email = "new@email.com"
+			req.Email = utils.NewString("new@email.com")
 		}),
-		errors.Errors{ErrNotAvailable},
+		ErrNotAvailable,
 		func(s *mockService) {
 			u := copyUser(mUser)
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
 			eUser := mockUser()
 			eUser.Email = "new@email.com"
 			s.repo.On("FindByEmail", "new@email.com").Return(eUser, nil)
+
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
 		},
 	}, {
 		"username and email not available",
 		mUser.ID.Hex(),
 		genReq(func(req *UpdateRequest) {
-			*req.Username = "new-user"
-			*req.Email = "new@email.com"
+			req.Username = utils.NewString("new-user")
+			req.Email = utils.NewString("new@email.com")
 		}),
-		errors.Errors{ErrNotAvailable},
+		ErrNotAvailable,
 		func(s *mockService) {
 			u := copyUser(mUser)
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
@@ -402,14 +407,15 @@ func TestUpdate(t *testing.T) {
 			eu2.Email = "new@email.com"
 			s.repo.On("FindByUsername", "new-user").Return(eu1, nil)
 			s.repo.On("FindByEmail", "new@email.com").Return(eu2, nil)
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
 		},
 	}, {
 		"valid update",
 		mUser.ID.Hex(),
 		genReq(func(req *UpdateRequest) {
-			*req.Username = "new-user"
-			*req.Email = "new@email.com"
-			*req.Password = "new-password"
+			req.Username = utils.NewString("new-user")
+			req.Email = utils.NewString("new@email.com")
+			req.Password = utils.NewString("new-password")
 		}),
 		nil,
 		func(s *mockService) {
@@ -562,6 +568,7 @@ func TestLogin(t *testing.T) {
 		ErrInvalidUser,
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "qwerty").Return(nil, ErrRepositoryNotFound)
+			s.repo.On("FindByEmail", "qwerty").Return(nil, ErrRepositoryNotFound)
 		},
 	}, {
 		"invalid password",
@@ -579,7 +586,7 @@ func TestLogin(t *testing.T) {
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(mUser, nil)
 			s.authServ.On("Create", mUser.ID.Hex()).Return(mToken, nil)
-			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+			// s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
 		},
 	}, {
 		"login with email and password",
@@ -591,7 +598,7 @@ func TestLogin(t *testing.T) {
 			s.repo.On("FindByUsername", "user@user.com").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
 			s.authServ.On("Create", mUser.ID.Hex()).Return(mToken, nil)
-			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+			// s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
 		},
 	}}
 
