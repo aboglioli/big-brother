@@ -79,5 +79,8 @@ func TestRedis(t *testing.T) {
 
 			assert.Equal(data, d)
 		}
+
+		err = r.Delete("data123")
+		assert.Nil(err)
 	})
 }
