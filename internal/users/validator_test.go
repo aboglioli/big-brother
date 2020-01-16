@@ -8,187 +8,161 @@ import (
 )
 
 func TestValidateSchema(t *testing.T) {
-	validator := NewValidator()
-
-	t.Run("Error", func(t *testing.T) {
-		assert := assert.New(t)
-
-		user1 := NewUser()
-		user2 := NewUser()
-		user2.Username = "aaa"
-		user2.Name = "a"
-		user2.Lastname = "a"
-		user3 := NewUser()
-		user3.Email = "a"
-		user4 := NewUser()
-		user4.Username = "admin"
-		user4.Password = "admin"
-		user4.Email = "a@a"
-		user4.Name = "Fulanito"
-		user4.Lastname = "De tal"
-		user5 := NewUser()
-		user5.Username = "admin#$"
-		user5.Password = "admin"
-		user5.Email = "a$a@%a.com"
-		user5.Name = "Fulan~$ito"
-		user5.Lastname = "De#tal"
-		user6 := NewUser()
-		user6.Username = "adm-in"
-		user6.Password = "admin"
-		user6.Email = "a@a-.com"
-		user6.Name = "Fulan1to"
-		user6.Lastname = "De tal"
-		user7 := NewUser()
-		user7.Username = "ádmin"
-		user7.Password = "admín"
-		user7.Email = "a@-a.com"
-		user7.Name = "Fulan1to"
-		user7.Lastname = "De0tal"
-
-		tests := []struct {
-			in  *User
-			out error
-		}{{
-			in: user1,
-			out: errors.Error{
-				Type: errors.Validation,
-				Code: ErrSchemaValidation.Code,
-				Fields: []errors.Field{
-					{"username", "invalid", "required"},
-					{"password", "invalid", "required"},
-					{"email", "invalid", "required"},
-					{"name", "invalid", "required"},
-					{"lastname", "invalid", "required"},
-				},
-			},
-		}, {
-			in: user2,
-			out: errors.Error{
-				Type: errors.Validation,
-				Code: ErrSchemaValidation.Code,
-				Fields: []errors.Field{
-					{"username", "invalid", "min"},
-					{"password", "invalid", "required"},
-					{"email", "invalid", "required"},
-					{"name", "invalid", "min"},
-					{"lastname", "invalid", "min"},
-				},
-			},
-		}, {
-			in: user3,
-			out: errors.Error{
-				Type: errors.Validation,
-				Code: ErrSchemaValidation.Code,
-				Fields: []errors.Field{
-					{"username", "invalid", "required"},
-					{"password", "invalid", "required"},
-					{"email", "invalid", "email"},
-					{"name", "invalid", "required"},
-					{"lastname", "invalid", "required"},
-				},
-			},
-		}, {
-			in: user4,
-			out: errors.Error{
-				Type: errors.Validation,
-				Code: ErrSchemaValidation.Code,
-				Fields: []errors.Field{
-					{"email", "invalid", "email"},
-				},
-			},
-		}, {
-			in: user5,
-			out: errors.Error{
-				Type: errors.Validation,
-				Code: ErrSchemaValidation.Code,
-				Fields: []errors.Field{
-					{"username", "invalid", "alphanumdash"},
-					{"email", "invalid", "email"},
-					{"name", "invalid", "alphaspaces"},
-					{"lastname", "invalid", "alphaspaces"},
-				},
-			},
-		}, {
-			in: user6,
-			out: errors.Error{
-				Type: errors.Validation,
-				Code: ErrSchemaValidation.Code,
-				Fields: []errors.Field{
-					{"email", "invalid", "email"},
-					{"name", "invalid", "alphaspaces"},
-				},
-			},
-		}, {
-			in: user7,
-			out: errors.Error{
-				Type: errors.Validation,
-				Code: ErrSchemaValidation.Code,
-				Fields: []errors.Field{
-					{"username", "invalid", "alphanumdash"},
-					{"email", "invalid", "email"},
-					{"name", "invalid", "alphaspaces"},
-					{"lastname", "invalid", "alphaspaces"},
-				},
-			},
-		}}
-
-		for _, test := range tests {
-			err := validator.ValidateSchema(test.in)
-			assert.NotNil(err)
-			assert.Equal(err, test.out)
-		}
-	})
-
-	t.Run("OK", func(t *testing.T) {
-		assert := assert.New(t)
-
-		user1 := NewUser()
-		user1.Username = "user"
-		user1.Password = "pwd"
-		user1.Email = "user@email.com"
-		user1.Name = "Name"
-		user1.Lastname = "Lastname"
-		user2 := NewUser()
-		user2.Username = "us-er"
-		user2.Password = "pwd"
-		user2.Email = "user@e-mail.com"
-		user2.Name = "Alan Daniel"
-		user2.Lastname = "Boglioli Caffé"
-
-		tests := []*User{user1, user2}
-
-		for _, test := range tests {
-			err := validator.ValidateSchema(test)
-			assert.Nil(err)
-		}
-	})
-
-}
-
-func TestValidatePassword(t *testing.T) {
-	assert := assert.New(t)
-
-	validator := NewValidator()
-
 	tests := []struct {
-		in  string
-		out error
+		name string
+		mock func(u *User)
+		err  error
 	}{{
-		"123",
-		ErrPasswordValidation.F("password", "too_weak"),
+		"empty user",
+		func(u *User) {
+			eu := NewUser()
+			*u = *eu
+		},
+		ErrSchemaValidation,
 	}, {
-		"123456",
-		ErrPasswordValidation.F("password", "too_weak"),
+		"empty username",
+		func(u *User) { u.Username = "" },
+		ErrSchemaValidation,
 	}, {
-		"1234567",
-		ErrPasswordValidation.F("password", "too_weak"),
+		"invalid username",
+		func(u *User) { u.Username = "aaa" },
+		ErrSchemaValidation,
 	}, {
-		"12345678",
+		"invalid username",
+		func(u *User) { u.Username = "admin#$" },
+		ErrSchemaValidation,
+	}, {
+		"invalid username",
+		func(u *User) { u.Username = "@dmin" },
+		ErrSchemaValidation,
+	}, {
+		"invalid username",
+		func(u *User) { u.Username = "ádmin" },
+		ErrSchemaValidation,
+	}, {
+		"empty password",
+		func(u *User) { u.Password = "" },
+		ErrSchemaValidation,
+	}, {
+		"empty email",
+		func(u *User) { u.Email = "" },
+		ErrSchemaValidation,
+	}, {
+		"invalid email",
+		func(u *User) { u.Email = "a" },
+		ErrSchemaValidation,
+	}, {
+		"invalid email",
+		func(u *User) { u.Email = "a@a" },
+		ErrSchemaValidation,
+	}, {
+		"invalid email",
+		func(u *User) { u.Email = "a@a-.com" },
+		ErrSchemaValidation,
+	}, {
+		"invalid email",
+		func(u *User) { u.Email = "a@-a.com" },
+		ErrSchemaValidation,
+	}, {
+		"invalid name",
+		func(u *User) { u.Name = "Fulan1to" },
+		ErrSchemaValidation,
+	}, {
+		"invalid name",
+		func(u *User) { u.Name = "Ful@ano" },
+		ErrSchemaValidation,
+	}, {
+		"invalid lastname",
+		func(u *User) { u.Lastname = "De t@l" },
+		ErrSchemaValidation,
+	}, {
+		"invalid lastname",
+		func(u *User) { u.Lastname = "De0tal" },
+		ErrSchemaValidation,
+	}, {
+		"valid",
+		nil,
+		nil,
+	}, {
+		"valid",
+		func(u *User) {
+			u.Username = "user-name"
+			u.Password = "pwd"
+			u.Email = "user@e-mail.com"
+			u.Name = "Fulano"
+			u.Lastname = "De tal"
+		},
+		nil,
+	}, {
+		"accent mark",
+		func(u *User) {
+			u.Name = "Alán"
+			u.Lastname = "Boglioli Caffé"
+		},
 		nil,
 	}}
 
 	for _, test := range tests {
-		err := validator.ValidatePassword(test.in)
-		assert.Equal(err, test.out)
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
+			user := mockUser()
+			if test.mock != nil {
+				test.mock(user)
+			}
+			validator := NewValidator()
+			err := validator.ValidateSchema(user)
+
+			if test.err != nil { // Error
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
+				}
+			} else { // OK
+				assert.Nil(err)
+			}
+		})
+	}
+}
+
+func TestValidatePassword(t *testing.T) {
+	tests := []struct {
+		pwd string
+		err error
+	}{{
+		"123",
+		ErrPasswordValidation,
+	}, {
+		"123456",
+		ErrPasswordValidation,
+	}, {
+		"abc123",
+		ErrPasswordValidation,
+	}, {
+		"12345678",
+		nil,
+	}, {
+		"123456789",
+		nil,
+	}, {
+		"long-password#!",
+		nil,
+	}, {
+		"my-compl€x_p@ssw0rd!",
+		nil,
+	}}
+
+	for _, test := range tests {
+		t.Run(test.pwd, func(t *testing.T) {
+			assert := assert.New(t)
+			validator := NewValidator()
+			err := validator.ValidatePassword(test.pwd)
+
+			if test.err != nil { // Error
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
+				}
+			} else { // OK
+				assert.Nil(err)
+			}
+		})
 	}
 }

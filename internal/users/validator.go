@@ -26,6 +26,26 @@ type validatorImpl struct {
 }
 
 func NewValidator() Validator {
+	alphaWithSpacesRE := regexp.MustCompile("^[a-zA-Záéíóú ]*$")
+	alphaWithSpaces := func(fl validator.FieldLevel) bool {
+		str := fl.Field().String()
+		if str == "invalid" {
+			return false
+		}
+
+		return alphaWithSpacesRE.MatchString(str)
+	}
+
+	alphaNumWithDashRE := regexp.MustCompile("^[a-zA-Z0-9-]*$")
+	alphaNumWithDash := func(fl validator.FieldLevel) bool {
+		str := fl.Field().String()
+		if str == "invalid" {
+			return false
+		}
+
+		return alphaNumWithDashRE.MatchString(str)
+	}
+
 	validate := validator.New()
 	validate.RegisterValidation("alphaspaces", alphaWithSpaces)
 	validate.RegisterValidation("alphanumdash", alphaNumWithDash)
@@ -61,26 +81,4 @@ func (v *validatorImpl) ValidatePassword(pwd string) error {
 	}
 
 	return nil
-}
-
-var alphaWithSpacesRE = regexp.MustCompile("^[a-zA-Záéíóú ]*$")
-
-func alphaWithSpaces(fl validator.FieldLevel) bool {
-	str := fl.Field().String()
-	if str == "invalid" {
-		return false
-	}
-
-	return alphaWithSpacesRE.MatchString(str)
-}
-
-var alphaNumWithDashRE = regexp.MustCompile("^[a-zA-Z0-9-]*$")
-
-func alphaNumWithDash(fl validator.FieldLevel) bool {
-	str := fl.Field().String()
-	if str == "invalid" {
-		return false
-	}
-
-	return alphaNumWithDashRE.MatchString(str)
 }

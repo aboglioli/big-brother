@@ -43,7 +43,7 @@ func (r *repositoryImpl) FindByID(tokenID string) (*Token, error) {
 }
 
 func (r *repositoryImpl) Insert(token *Token) error {
-	r.cache.Set(token.ID.Hex(), token, cache.NoExpiration)
+	r.cache.Set(token.ID, token, cache.NoExpiration)
 	return nil
 }
 

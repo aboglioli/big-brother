@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/aboglioli/big-brother/pkg/config"
+	"github.com/aboglioli/big-brother/pkg/db"
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/dgrijalva/jwt-go"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var (
@@ -16,16 +16,16 @@ var (
 )
 
 type Token struct {
-	ID        primitive.ObjectID `json:"id" bson:"_id"`
-	UserID    string             `json:"userId" bson:"userId"`
-	CreatedAt time.Time          `json:"createdAt" bson:"createdAt"`
+	ID        string `json:"id"`
+	UserID    string `json:"user_id"`
+	CreatedAt int64  `json:"created_at"`
 }
 
 func NewToken(userID string) *Token {
 	return &Token{
-		ID:        primitive.NewObjectID(),
+		ID:        db.NewID(),
 		UserID:    userID,
-		CreatedAt: time.Now(),
+		CreatedAt: time.Now().UnixNano(),
 	}
 }
 
@@ -33,9 +33,9 @@ func (t *Token) Encode() (string, error) {
 	config := config.Get()
 
 	jwtToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":        t.ID.Hex(),
+		"id":        t.ID,
 		"userId":    t.UserID,
-		"createdAt": t.CreatedAt.Format(time.RFC3339Nano),
+		"createdAt": t.CreatedAt,
 	})
 
 	tokenStr, err := jwtToken.SignedString(config.JWTSecret)
@@ -64,19 +64,9 @@ func decodeToken(tokenStr string) (*Token, error) {
 		return nil, ErrDecode
 	}
 
-	idStr := claims["id"].(string)
+	id := claims["id"].(string)
 	userID := claims["userId"].(string)
-	createdAtStr := claims["createdAt"].(string)
-
-	id, err := primitive.ObjectIDFromHex(idStr)
-	if err != nil {
-		return nil, ErrDecode.Wrap(err)
-	}
-
-	createdAt, err := time.Parse(time.RFC3339Nano, createdAtStr)
-	if err != nil {
-		return nil, ErrDecode.Wrap(err)
-	}
+	createdAt := int64(claims["createdAt"].(float64))
 
 	return &Token{
 		ID:        id,

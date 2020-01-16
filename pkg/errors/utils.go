@@ -1,6 +1,6 @@
 package errors
 
-import "fmt"
+import "testing"
 
 func Compare(err1, err2 error) bool {
 	if err1 == nil && err2 == nil {
@@ -40,16 +40,8 @@ func Compare(err1, err2 error) bool {
 	return false
 }
 
-func Print(err error) string {
-	switch err := err.(type) {
-	case Errors:
-		str := "Errors:"
-		for i, err := range err {
-			str = fmt.Sprintf("%s\n\t%d: %s", str, i, Print(err))
-		}
-		return str
-	case Error:
-
+func Assert(t *testing.T, expectedErr, actualErr error) {
+	if !Compare(expectedErr, actualErr) {
+		t.Errorf("Error assert:\nexpected: %s\nactual  : %s", expectedErr, actualErr)
 	}
-	return ""
 }

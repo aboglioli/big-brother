@@ -10,7 +10,7 @@ import (
 var (
 	ErrNotFound     = errors.Status.New("user.service.not_found").S(404)
 	ErrNotValidated = errors.Status.New("user.service.not_validated")
-	ErrCreate       = errors.Status.New("user.service.create")
+	ErrRegister     = errors.Status.New("user.service.register")
 	ErrNotAvailable = errors.Validation.New("user.not_available")
 	ErrUpdate       = errors.Status.New("user.service.update")
 	ErrDelete       = errors.Status.New("user.service.delete")
@@ -98,13 +98,13 @@ func (s *serviceImpl) Register(req *RegisterRequest) (*User, error) {
 
 	// Insert
 	if err := s.repo.Insert(user); err != nil {
-		return nil, ErrCreate.Wrap(err)
+		return nil, ErrRegister.Wrap(err)
 	}
 
 	// Emit event
 	userCreatedEvent := NewUserEvent(user, "UserCreated")
 	if err := s.events.Publish(userCreatedEvent, &events.Options{"user", "user.created", ""}); err != nil {
-		return nil, ErrCreate.Wrap(err)
+		return nil, ErrRegister.Wrap(err)
 	}
 
 	return user, nil
@@ -205,14 +205,13 @@ func (s *serviceImpl) Delete(id string) error {
 }
 
 type LoginRequest struct {
-	Username *string `json:"username"`
-	Email    *string `json:"email"`
-	Password *string `json:"password"`
+	UsernameOrEmail *string `json:"username_or_email"`
+	Password        *string `json:"password"`
 }
 
 func (s *serviceImpl) Login(req *LoginRequest) (*auth.Token, error) {
 	vErr := ErrInvalidLogin
-	if req.Username == nil && req.Email == nil {
+	if req.UsernameOrEmail == nil {
 		vErr = vErr.F("username", "required")
 	}
 	if req.Password == nil {
@@ -222,12 +221,9 @@ func (s *serviceImpl) Login(req *LoginRequest) (*auth.Token, error) {
 		return nil, vErr
 	}
 
-	var user *User
-	var err error
-	if req.Username != nil {
-		user, err = s.repo.FindByUsername(*req.Username)
-	} else if req.Email != nil {
-		user, err = s.repo.FindByEmail((*req.Email))
+	user, err := s.repo.FindByUsername(*req.UsernameOrEmail)
+	if user == nil || err != nil {
+		user, err = s.repo.FindByEmail(*req.UsernameOrEmail)
 	}
 
 	if user == nil || err != nil {

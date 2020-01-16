@@ -1,851 +1,683 @@
 package users
 
 import (
-	"reflect"
 	"testing"
 
+	"github.com/aboglioli/big-brother/internal/auth"
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/aboglioli/big-brother/pkg/events"
-	"github.com/aboglioli/big-brother/pkg/mock"
+	"github.com/aboglioli/big-brother/pkg/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
-func TestGetByID(t *testing.T) {
-	assert := assert.New(t)
+func mockUser() *User {
+	user := NewUser()
+	user.Username = "user"
+	user.SetPassword("12345678")
+	user.Email = "user@user.com"
+	user.Name = "Name"
+	user.Lastname = "Lastname"
+	user.Validated = true
+	user.Enabled = true
+	return user
+}
 
-	user1 := newMockUser("")
-	user1.Validated = false
-	user2 := newMockUser("")
-	user2.Validated = true
-	user3 := newMockUser("")
-	user3.Enabled = false
+func copyUser(u *User) *User {
+	copy := *u
+	return &copy
+}
+
+func TestGetByID(t *testing.T) {
+	mUser := mockUser()
 
 	tests := []struct {
+		name string
 		id   string
 		err  error
-		user *User
+		mock func(s *mockService)
 	}{{
+		"invalid id",
 		"123",
 		ErrNotFound,
-		nil,
+		func(s *mockService) {
+			s.repo.On("FindByID", "123").Return(nil, ErrRepositoryNotFound)
+		},
 	}, {
-		"abc1235",
+		"invalid id",
+		"abc123",
 		ErrNotFound,
-		nil,
+		func(s *mockService) {
+			s.repo.On("FindByID", "abc123").Return(nil, ErrRepositoryNotFound)
+		},
 	}, {
-		"xyz123",
+		"not found in db",
+		mUser.ID.Hex(),
 		ErrNotFound,
-		nil,
+		func(s *mockService) {
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(nil, ErrRepositoryNotFound)
+		},
 	}, {
-		user1.ID.Hex(),
+		"not validated",
+		mUser.ID.Hex(),
 		ErrNotValidated,
-		nil,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			u.Validated = false
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+		},
 	}, {
-		user2.ID.Hex(),
-		nil,
-		user2,
-	}, {
-		user3.ID.Hex(),
+		"not enabled",
+		mUser.ID.Hex(),
 		ErrNotFound,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			u.Enabled = false
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+		},
+	}, {
+		"existing user",
+		mUser.ID.Hex(),
 		nil,
+		func(s *mockService) {
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(mUser, nil)
+		},
 	}}
 
-	for i, test := range tests {
-		mockServ := newMockService()
-		mockServ.repo.populate(user1, user2)
-		u, err := mockServ.GetByID(test.id)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
+			serv := newMockService()
+			if test.mock != nil {
+				test.mock(serv)
+			}
 
-		if !assert.True(errors.Compare(test.err, err), i) {
-			t.Errorf("test %d:\n-expected:%s\n-actual:  %s", i, test.err, err)
-		}
-		assert.Equal(test.user, u, "test %d", i)
+			user, err := serv.GetByID(test.id)
 
-		if msg := mockServ.repo.Mock.Assert(
-			mock.Call("FindByID", test.id),
-		); msg != "" {
-			t.Errorf("test %d: %s", i, msg)
-		}
+			if test.err != nil { // Error
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
+				}
+				assert.Nil(user)
+			} else { // OK
+				assert.Nil(err)
+				if assert.NotNil(user) {
+					assert.Equal(test.id, user.ID.Hex())
+				}
+			}
+			serv.repo.AssertExpectations(t)
+		})
 	}
 }
 
 func TestRegister(t *testing.T) {
-	t.Run("Error", func(t *testing.T) {
-		assert := assert.New(t)
+	mUser := mockUser()
 
-		tests := []struct {
-			req *RegisterRequest
-			err error
-		}{{
-			&RegisterRequest{"admin", "1234567", "admin@admin.com", "Name", "Lastname"},
-			errors.Errors{ErrPasswordValidation},
-		}, {
-			&RegisterRequest{"user", "123456789", "admin@admi.com", "Name", "Lastname"},
-			errors.Errors{ErrNotAvailable},
-		}, {
-			&RegisterRequest{"admin", "12345678", "user@user.com", "Name", "Lastname"},
-			errors.Errors{ErrNotAvailable},
-		}, {
-			&RegisterRequest{"user", "12345678", "user@user.com", "Name", "Lastname"},
-			errors.Errors{ErrNotAvailable},
-		}, {
-			&RegisterRequest{"us€r", "1234", "user@user", "Name", "Lastname"},
-			errors.Errors{ErrPasswordValidation, ErrSchemaValidation},
-		}, {
-			&RegisterRequest{"user", "1234", "user@user", "Name", "Lastname"},
-			errors.Errors{ErrNotAvailable, ErrPasswordValidation, ErrSchemaValidation},
-		}, {
-			&RegisterRequest{"new-user", "123456789", "user@new-user.com", "Alan1", "Lastname2"},
-			errors.Errors{ErrSchemaValidation},
-		}, {
-			&RegisterRequest{"user", "123456789", "user@new-user.com", "Alan1", "Lastname"},
-			errors.Errors{ErrNotAvailable, ErrSchemaValidation},
-		}}
-
-		for i, test := range tests {
-			mockServ := newMockService()
-			existingUser := newMockUser("")
-			mockServ.repo.populate(existingUser)
-			u, err := mockServ.Register(test.req)
-
-			if assert.NotNil(err, i) {
-				assert.True(errors.Compare(test.err, err), i)
-			}
-			assert.Nil(u, i)
-
-			call1 := mock.Call("FindByUsername", test.req.Username)
-			call2 := mock.Call("FindByEmail", test.req.Email)
-
-			if test.req.Username == existingUser.Username {
-				call1 = call1.Return(mock.NotNil, mock.Nil)
-			} else {
-				call1 = call1.Return(mock.Nil, mock.NotNil)
-			}
-
-			if test.req.Email == existingUser.Email {
-				call2 = call2.Return(mock.NotNil, mock.Nil)
-			} else {
-				call2 = call2.Return(mock.Nil, mock.NotNil)
-			}
-
-			if msg := mockServ.repo.Mock.Assert(
-				call1,
-				call2,
-			); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-
-			if msg := mockServ.validator.Mock.Assert(
-				mock.Call("ValidatePassword", test.req.Password),
-				mock.Call("ValidateSchema", mock.NotNil),
-			); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
+	genReq := func(cb func(req *RegisterRequest)) *RegisterRequest {
+		req := &RegisterRequest{
+			Username: mUser.Username,
+			Password: "12345678",
+			Email:    mUser.Email,
+			Name:     mUser.Name,
+			Lastname: mUser.Lastname,
 		}
-	})
-
-	t.Run("OK", func(t *testing.T) {
-		assert := assert.New(t)
-
-		tests := []struct {
-			req  *RegisterRequest
-			user *User
-		}{{
-			&RegisterRequest{"admin", "123456789", "admin@admin.com", "Admin", "Lastname"},
-			&User{
-				Username: "admin",
-				Email:    "admin@admin.com",
-			},
-		}, {
-			&RegisterRequest{"user", "asdqwe123", "user@user.com", "User", "Lastname"},
-			&User{
-				Username: "user",
-				Email:    "user@user.com",
-			},
-		}}
-
-		for i, test := range tests {
-			mockServ := newMockService()
-			user, err := mockServ.Register(test.req)
-
-			// Response
-			assert.Nil(err, i)
-			if assert.NotNil(user, i) {
-				assert.Equal(test.user.Username, user.Username, i)
-				assert.Equal(test.user.Email, user.Email)
-				assert.NotEqual(test.req.Password, user.Password, i)
-				assert.True(user.Enabled, i)
-				assert.False(user.Validated, i)
-			}
-
-			// Validator
-			if msg := mockServ.validator.Mock.Assert(
-				mock.Call("ValidatePassword", test.req.Password).Return(nil),
-				mock.Call("ValidateSchema", user).Return(nil),
-			); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-
-			// Repository
-			if msg := mockServ.repo.Mock.Assert(
-				mock.Call("FindByUsername", test.req.Username).Return(mock.Nil, mock.NotNil),
-				mock.Call("FindByEmail", test.req.Email).Return(mock.Nil, mock.NotNil),
-				mock.Call("Insert", mock.NotNil).Return(nil),
-			); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-
-			insertedUser, ok := mockServ.repo.Mock.Calls[2].Args[0].(*User)
-			if !ok {
-				t.Error("invalid conversion")
-				continue
-			}
-			if !reflect.DeepEqual(user, insertedUser) {
-				t.Errorf("test %d: inserted user is not equal to returned user\n-expected:%#v\n-actual:  %#v", i, user, insertedUser)
-			}
-			insertedUser = mockServ.repo.Collection[0]
-			if !reflect.DeepEqual(user, insertedUser) {
-				t.Errorf("test %d: inserted user is not equal to returned user\n-expected:%#v\n-actual:  %#v", i, user, insertedUser)
-			}
-
-			// Events
-			if msg := mockServ.events.Mock.Assert(
-				mock.Call("Publish", mock.NotNil, mock.NotNil).Return(nil),
-			); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-			event, ok1 := mockServ.events.Mock.Calls[0].Args[0].(*UserEvent)
-			opts, ok2 := mockServ.events.Mock.Calls[0].Args[1].(*events.Options)
-
-			if !ok1 || !ok2 {
-				t.Error("invalid conversion")
-				continue
-			}
-			if event.Type != "UserCreated" {
-				t.Errorf("test %d: invalid event type", i)
-			}
-			if !reflect.DeepEqual(user, event.User) {
-				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, user, event.User)
-			}
-			if opts.Exchange != "user" || opts.Route != "user.created" || opts.Queue != "" {
-				t.Errorf("test %d: invalid event options %#v", i, opts)
-			}
+		if cb != nil {
+			cb(req)
 		}
-	})
+		return req
+	}
+
+	tests := []struct {
+		name string
+		req  *RegisterRequest
+		err  error
+		mock func(s *mockService)
+	}{{
+		"invalid schema and password",
+		genReq(nil),
+		errors.Errors{ErrSchemaValidation, ErrPasswordValidation},
+		func(s *mockService) {
+			s.validator.On("ValidateSchema", mock.Anything).Return(ErrSchemaValidation)
+			s.validator.On("ValidatePassword", "12345678").Return(ErrPasswordValidation)
+		},
+	}, {
+		"invalid password",
+		genReq(func(req *RegisterRequest) {
+			req.Password = "1234567"
+		}),
+		errors.Errors{ErrPasswordValidation},
+		func(s *mockService) {
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidatePassword", "1234567").Return(ErrPasswordValidation)
+		},
+	}, {
+		"username not available",
+		genReq(nil),
+		errors.Errors{ErrNotAvailable},
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "user").Return(mUser, nil)
+			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidatePassword", "12345678").Return(nil)
+		},
+	}, {
+		"email not available",
+		genReq(nil),
+		errors.Errors{ErrNotAvailable},
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "user").Return(nil, ErrRepositoryNotFound)
+			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidatePassword", "12345678").Return(nil)
+		},
+	}, {
+		"user and email not available",
+		genReq(nil),
+		errors.Errors{ErrNotAvailable},
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "user").Return(mUser, nil)
+			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidatePassword", "12345678").Return(nil)
+		},
+	}, {
+		"error on insert",
+		genReq(nil),
+		ErrRegister,
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "user").Return(nil, ErrRepositoryNotFound)
+			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidatePassword", "12345678").Return(nil)
+			s.repo.On("Insert", mock.Anything).Return(ErrRepositoryInsert)
+		},
+	}, {
+		"error on publishing event",
+		genReq(nil),
+		ErrRegister,
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "user").Return(nil, ErrRepositoryNotFound)
+			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidatePassword", "12345678").Return(nil)
+			s.repo.On("Insert", mock.Anything).Return(nil)
+			s.events.On("Publish", mock.Anything, mock.Anything).Return(events.ErrPublish)
+		},
+	}, {
+		"valid user",
+		genReq(nil),
+		nil,
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "user").Return(nil, ErrRepositoryNotFound)
+			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidatePassword", "12345678").Return(nil)
+			s.repo.On("Insert", mock.Anything).Return(nil)
+			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+		},
+	}, {
+		"valid admin",
+		genReq(func(req *RegisterRequest) {
+			req.Username = "admin"
+			req.Password = "123456789"
+			req.Email = "admin@admin.com"
+			req.Name = "Admin"
+			req.Lastname = "Lastname"
+		}),
+		nil,
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "admin").Return(nil, ErrRepositoryNotFound)
+			s.repo.On("FindByEmail", "admin@admin.com").Return(nil, ErrRepositoryNotFound)
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidatePassword", "123456789").Return(nil)
+			s.repo.On("Insert", mock.Anything).Return(nil)
+			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+		},
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
+			serv := newMockService()
+			if test.mock != nil {
+				test.mock(serv)
+			}
+
+			user, err := serv.Register(test.req)
+
+			if test.err != nil {
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
+				}
+				assert.Nil(user)
+			} else {
+				assert.Nil(err)
+				if assert.NotNil(user) {
+					assert.NotEmpty(user.ID.Hex())
+					assert.Equal(test.req.Username, user.Username)
+					assert.NotEqual(test.req.Password, user.Password)
+					assert.True(user.ComparePassword(test.req.Password))
+					assert.Equal(test.req.Email, user.Email)
+					assert.Equal(test.req.Name, user.Name)
+					assert.Equal(test.req.Lastname, user.Lastname)
+				}
+				serv.validator.AssertCalled(t, "ValidateSchema", user)
+				serv.repo.AssertCalled(t, "Insert", user)
+			}
+			serv.repo.AssertExpectations(t)
+			serv.validator.AssertExpectations(t)
+			serv.events.AssertExpectations(t)
+		})
+	}
 }
 
 func TestUpdate(t *testing.T) {
-	user1 := newMockUser("")
-	user1.Validated = true
-	user2 := newMockUser("")
-	user2.Validated = true
-	user2.Username = "admin"
-	user2.Email = "admin@admin.com"
-	user2.Name = "Admin"
-	user2.Lastname = "Admin"
-	user2.Roles = []Role{ADMIN}
-	user3 := newMockUser("")
-	user3.Validated = false
-	user3.Username = "non-validated"
-	user3.Email = "non-validated@user.com"
-	user4 := newMockUser("")
-	user4.Validated = true
-	user4.Enabled = false
-	user4.Username = "non-enabled"
-	user4.Email = "non-enabled@user.com"
+	mUser := mockUser()
 
-	t.Run("Error", func(t *testing.T) {
-		assert := assert.New(t)
+	genReq := func(cb func(req *UpdateRequest)) *UpdateRequest {
+		req := &UpdateRequest{
+			Name: utils.NewString("New name"),
+		}
+		if cb != nil {
+			cb(req)
+		}
+		return req
+	}
 
-		req1 := &UpdateRequest{
-			Name:     new(string),
-			Lastname: new(string),
-		}
-		*req1.Name = "11111"
-		*req1.Lastname = "22222"
-		req2 := &UpdateRequest{
-			Username: new(string),
-		}
-		*req2.Username = "admin"
-		req3 := &UpdateRequest{
-			Username: new(string),
-		}
-		*req3.Username = "user#1"
-		req4 := &UpdateRequest{
-			Password: new(string),
-		}
-		*req4.Password = "1234"
-		req5 := &UpdateRequest{
-			Email: new(string),
-		}
-		*req5.Email = "admin@admin"
-		req6 := &UpdateRequest{
-			Email: new(string),
-		}
-		*req6.Email = "admin@admin.com"
-		req7 := &UpdateRequest{
-			Username: new(string),
-			Email:    new(string),
-			Password: new(string),
-			Name:     new(string),
-		}
-		*req7.Username = "admin"
-		*req7.Email = "admin@admin.com"
-		*req7.Password = "1234"
-		*req7.Name = "Al@n"
-		req8 := &UpdateRequest{
-			Name:     new(string),
-			Lastname: new(string),
-		}
-		*req8.Name = "Hello"
-		*req8.Lastname = "World"
+	tests := []struct {
+		name string
+		id   string
+		req  *UpdateRequest
+		err  error
+		mock func(s *mockService)
+	}{{
+		"invalid id",
+		"abc123",
+		genReq(nil),
+		ErrNotFound,
+		func(s *mockService) {
+			s.repo.On("FindByID", "abc123").Return(nil, ErrRepositoryNotFound)
+		},
+	}, {
+		"not enabled user",
+		mUser.ID.Hex(),
+		genReq(nil),
+		ErrNotFound,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			u.Enabled = false
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+		},
+	}, {
+		"not validated user",
+		mUser.ID.Hex(),
+		genReq(nil),
+		ErrNotValidated,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			u.Validated = false
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+		},
+	}, {
+		"invalid name and lastname",
+		mUser.ID.Hex(),
+		genReq(func(req *UpdateRequest) {
+			*req.Name = "11111"
+			*req.Lastname = "22222"
+		}),
+		ErrSchemaValidation,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.validator.On("ValidateSchema", u).Return(ErrSchemaValidation)
+		},
+	}, {
+		"invalid username and email",
+		mUser.ID.Hex(),
+		genReq(func(req *UpdateRequest) {
+			*req.Username = "new user"
+			*req.Email = "inválid@-email.c"
+		}),
+		ErrSchemaValidation,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.validator.On("ValidateSchema", u).Return(ErrSchemaValidation)
+		},
+	}, {
+		"invalid password",
+		mUser.ID.Hex(),
+		genReq(func(req *UpdateRequest) {
+			*req.Password = "1245"
+		}),
+		ErrPasswordValidation,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.validator.On("ValidatePassword", "1245").Return(ErrPasswordValidation)
+		},
+	}, {
+		"username not available",
+		mUser.ID.Hex(),
+		genReq(func(req *UpdateRequest) {
+			*req.Username = "new-user"
+		}),
+		errors.Errors{ErrNotAvailable},
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			eUser := mockUser()
+			eUser.Username = "new-user"
+			s.repo.On("FindByUsername", "new-user").Return(eUser, nil)
+		},
+	}, {
+		"email not available",
+		mUser.ID.Hex(),
+		genReq(func(req *UpdateRequest) {
+			*req.Email = "new@email.com"
+		}),
+		errors.Errors{ErrNotAvailable},
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			eUser := mockUser()
+			eUser.Email = "new@email.com"
+			s.repo.On("FindByEmail", "new@email.com").Return(eUser, nil)
+		},
+	}, {
+		"username and email not available",
+		mUser.ID.Hex(),
+		genReq(func(req *UpdateRequest) {
+			*req.Username = "new-user"
+			*req.Email = "new@email.com"
+		}),
+		errors.Errors{ErrNotAvailable},
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			eu1 := mockUser()
+			eu1.Username = "new-user"
+			eu2 := mockUser()
+			eu2.Email = "new@email.com"
+			s.repo.On("FindByUsername", "new-user").Return(eu1, nil)
+			s.repo.On("FindByEmail", "new@email.com").Return(eu2, nil)
+		},
+	}, {
+		"valid update",
+		mUser.ID.Hex(),
+		genReq(func(req *UpdateRequest) {
+			*req.Username = "new-user"
+			*req.Email = "new@email.com"
+			*req.Password = "new-password"
+		}),
+		nil,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByUsername", "new-user").Return(nil, ErrRepositoryNotFound)
+			s.repo.On("FindByEmail", "new@email.com").Return(nil, ErrRepositoryNotFound)
+			s.validator.On("ValidateSchema", mock.Anything).Return(nil)
+			s.validator.On("ValidatePassword", "new-password").Return(nil)
+			s.repo.On("Update", mock.Anything).Return(nil)
+			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+		},
+	}}
 
-		tests := []struct {
-			id  string
-			req *UpdateRequest
-			err error
-		}{{
-			"123",
-			&UpdateRequest{},
-			ErrNotFound,
-		}, {
-			"123456",
-			req1,
-			ErrNotFound,
-		}, {
-			user1.ID.Hex(),
-			req1,
-			errors.Errors{ErrSchemaValidation},
-		}, {
-			user1.ID.Hex(),
-			req2,
-			errors.Errors{ErrNotAvailable},
-		}, {
-			user1.ID.Hex(),
-			req3,
-			errors.Errors{ErrSchemaValidation},
-		}, {
-			user1.ID.Hex(),
-			req4,
-			errors.Errors{ErrPasswordValidation},
-		}, {
-			user1.ID.Hex(),
-			req5,
-			errors.Errors{ErrSchemaValidation},
-		}, {
-			user1.ID.Hex(),
-			req6,
-			errors.Errors{ErrNotAvailable},
-		}, {
-			user1.ID.Hex(),
-			req7,
-			errors.Errors{ErrNotAvailable, ErrPasswordValidation, ErrSchemaValidation},
-		}, {
-			user3.ID.Hex(),
-			req8,
-			ErrNotValidated,
-		}, {
-			user4.ID.Hex(),
-			req8,
-			ErrNotFound,
-		}}
-
-		for i, test := range tests {
-			mockServ := newMockService()
-			mockServ.repo.populate(user1, user2, user3)
-			user, err := mockServ.Update(test.id, test.req)
-
-			if assert.NotNil(err, i) {
-				assert.True(errors.Compare(test.err, err), i)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
+			serv := newMockService()
+			if test.mock != nil {
+				test.mock(serv)
 			}
-			assert.Nil(user, i)
 
-			repoCalls := mock.Calls{mock.Call("FindByID", test.id)}
-			validatorCalls := mock.Calls{}
+			user, err := serv.Update(test.id, test.req)
 
-			if test.id == user1.ID.Hex() {
-				if test.req.Username != nil {
-					repoCalls = append(repoCalls, mock.Call("FindByUsername", *test.req.Username))
+			if test.err != nil {
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
 				}
-				if test.req.Password != nil {
-					validatorCalls = append(validatorCalls, mock.Call("ValidatePassword", *test.req.Password))
+				assert.Nil(user)
+			} else {
+				assert.Nil(err)
+				if assert.NotNil(user) {
+					assert.Equal(test.id, user.ID.Hex())
+					assert.NotEqual(mUser, user)
 				}
-				if test.req.Email != nil {
-					repoCalls = append(repoCalls, mock.Call("FindByEmail", *test.req.Email))
-				}
-
-				validatorCalls = append(validatorCalls, mock.Call("ValidateSchema", mock.NotNil))
+				serv.validator.AssertCalled(t, "ValidateSchema", user)
+				serv.repo.AssertCalled(t, "Update", user)
 			}
-
-			if msg := mockServ.validator.Mock.Assert(validatorCalls...); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-
-			if msg := mockServ.repo.Mock.Assert(repoCalls...); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-		}
-	})
-
-	t.Run("OK", func(t *testing.T) {
-		assert := assert.New(t)
-
-		req1 := &UpdateRequest{
-			Name:     new(string),
-			Lastname: new(string),
-		}
-		*req1.Name = "NewName"
-		*req1.Lastname = "NewLastname"
-
-		tests := []struct {
-			id   string
-			req  *UpdateRequest
-			user *User
-		}{{
-			user1.ID.Hex(),
-			req1,
-			&User{
-				Username: "user",
-				Password: "123456789",
-				Email:    "user@user.com",
-				Name:     "NewName",
-				Lastname: "NewLastname",
-			},
-		}}
-
-		for i, test := range tests {
-			mockServ := newMockService()
-			mockServ.repo.populate(user1, user2)
-			user, err := mockServ.Update(test.id, test.req)
-
-			assert.Nil(err, i)
-			if assert.NotNil(user, i) {
-				assert.Equal(test.user.Username, user.Username, i)
-				assert.Equal(test.user.Email, user.Email, i)
-				assert.Equal(test.user.Name, user.Name, i)
-				assert.Equal(test.user.Lastname, user.Lastname, i)
-				assert.True(user.ComparePassword(test.user.Password), i)
-			}
-
-			repoCalls := mock.Calls{mock.Call("FindByID", test.id)}
-			validatorCalls := mock.Calls{}
-			if test.req.Username != nil {
-				repoCalls = append(repoCalls, mock.Call("FindByUsername", *test.req.Username))
-			}
-			if test.req.Password != nil {
-				validatorCalls = append(validatorCalls, mock.Call("ValidatePassword", test.req.Password))
-			}
-			if test.req.Email != nil {
-				repoCalls = append(repoCalls, mock.Call("FindByEmail", *test.req.Email))
-			}
-			repoCalls = append(repoCalls, mock.Call("Update", user))
-			validatorCalls = append(validatorCalls, mock.Call("ValidateSchema", user))
-
-			if msg := mockServ.repo.Mock.Assert(repoCalls...); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-			if msg := mockServ.validator.Mock.Assert(validatorCalls...); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-			if msg := mockServ.events.Mock.Assert(mock.Call("Publish", mock.NotNil, mock.NotNil)); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-
-			// Events
-			if msg := mockServ.events.Mock.Assert(
-				mock.Call("Publish", mock.NotNil, mock.NotNil).Return(nil),
-			); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-			event, ok1 := mockServ.events.Mock.Calls[0].Args[0].(*UserEvent)
-			opts, ok2 := mockServ.events.Mock.Calls[0].Args[1].(*events.Options)
-
-			if !ok1 || !ok2 {
-				t.Error("invalid conversion")
-				continue
-			}
-			if event.Type != "UserUpdated" {
-				t.Errorf("test %d: invalid event type", i)
-			}
-			if !reflect.DeepEqual(user, event.User) {
-				t.Errorf("test %d:\n-expected:%#v\n-actual:  %#v", i, user, event.User)
-			}
-			if opts.Exchange != "user" || opts.Route != "user.updated" || opts.Queue != "" {
-				t.Errorf("test %d: invalid event options %#v", i, opts)
-			}
-		}
-	})
+			serv.validator.AssertExpectations(t)
+			serv.repo.AssertExpectations(t)
+			serv.events.AssertExpectations(t)
+		})
+	}
 }
 
 func TestDelete(t *testing.T) {
-	user1 := newMockUser("")
-	user1.Validated = true
-	user2 := newMockUser("")
-	user2.Validated = true
-	user2.Username = "admin"
-	user2.Email = "admin@admin.com"
-	user2.Name = "Admin"
-	user2.Lastname = "Admin"
-	user2.Roles = []Role{ADMIN}
+	mUser := mockUser()
 
-	t.Run("Error", func(t *testing.T) {
-		assert := assert.New(t)
+	tests := []struct {
+		name string
+		id   string
+		err  error
+		mock func(s *mockService)
+	}{{
+		"not found",
+		"abc123",
+		ErrNotFound,
+		func(s *mockService) {
+			s.repo.On("FindByID", "abc123").Return(nil, ErrRepositoryNotFound)
+		},
+	}, {
+		"not enabled",
+		mUser.ID.Hex(),
+		ErrNotFound,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			u.Enabled = false
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+		},
+	}, {
+		"not validated",
+		mUser.ID.Hex(),
+		ErrNotValidated,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			u.Validated = false
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+		},
+	}, {
+		"success",
+		mUser.ID.Hex(),
+		nil,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("Delete", mUser.ID.Hex()).Return(nil)
+			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+		},
+	}}
 
-		tests := []struct {
-			id  string
-			err error
-		}{{
-			"1234",
-			ErrNotFound,
-		}}
-
-		for i, test := range tests {
-			mockServ := newMockService()
-			mockServ.repo.populate(user1, user2)
-			err := mockServ.Delete(test.id)
-
-			assert.True(errors.Compare(test.err, err), i)
-		}
-	})
-
-	t.Run("OK", func(t *testing.T) {
-		assert := assert.New(t)
-
-		tests := []struct {
-			id string
-		}{{
-			user1.ID.Hex(),
-		}, {
-			user2.ID.Hex(),
-		}}
-
-		for i, test := range tests {
-			mockServ := newMockService()
-			mockServ.repo.populate(user1, user2)
-			err := mockServ.Delete(test.id)
-
-			assert.Nil(err)
-
-			if msg := mockServ.events.Mock.Assert(
-				mock.Call("Publish", mock.NotNil, mock.NotNil).Return(mock.Nil),
-			); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
+			serv := newMockService()
+			if test.mock != nil {
+				test.mock(serv)
 			}
-			userEvent, ok1 := mockServ.events.Mock.Calls[0].Args[0].(*UserEvent)
-			opts, ok2 := mockServ.events.Mock.Calls[0].Args[1].(*events.Options)
-			if !ok1 || !ok2 {
-				t.Errorf("test %d: invalid conversion", i)
-				continue
-			}
-			if userEvent.Type != "UserDeleted" {
-				t.Errorf("test %d: invalid event type %s", i, userEvent.Type)
-			}
-			if userEvent.User.ID.Hex() != test.id {
-				t.Errorf("test %d: invalid user id %s", i, userEvent.User.ID.Hex())
-			}
-			if opts.Exchange != "user" || opts.Route != "user.deleted" || opts.Queue != "" {
-				t.Errorf("test %d: invalid options %#v", i, opts)
-			}
-		}
-	})
 
+			err := serv.Delete(test.id)
+
+			if test.err != nil {
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
+				}
+			}
+		})
+	}
 }
 
 func TestLogin(t *testing.T) {
-	user1 := newMockUser(userID)
-	user2 := newMockUser(adminID)
-	user2.Username = "admin"
-	user2.SetPassword("admin1234")
-	user2.Email = "admin@admin.com"
-	user3 := newMockUser("")
-	user3.Username = "other-user"
-	user3.Email = "other@user.com"
+	mUser := mockUser()
+	mToken := auth.NewToken(mUser.ID.Hex())
 
-	t.Run("Error", func(t *testing.T) {
-		assert := assert.New(t)
+	genReq := func(cb func(req *LoginRequest)) *LoginRequest {
+		req := &LoginRequest{
+			UsernameOrEmail: utils.NewString("user"),
+			Password:        utils.NewString("12345678"),
+		}
+		if cb != nil {
+			cb(req)
+		}
+		return req
+	}
 
-		req1 := &LoginRequest{
-			Username: new(string),
-			Password: new(string),
-		}
-		*req1.Username = "invalid-user"
-		*req1.Password = "123456789"
-		req2 := &LoginRequest{
-			Username: new(string),
-			Password: new(string),
-		}
-		*req2.Username = "user"
-		*req2.Password = "invalid-password"
-		req3 := &LoginRequest{
-			Username: new(string),
-			Password: new(string),
-		}
-		*req3.Username = "invalid-user"
-		*req3.Password = "invalid-password"
-		req4 := &LoginRequest{
-			Email:    new(string),
-			Password: new(string),
-		}
-		*req4.Email = "invalid@email.com"
-		*req4.Password = "123456789"
-		req5 := &LoginRequest{
-			Email:    new(string),
-			Password: new(string),
-		}
-		*req5.Email = "user@user.com"
-		*req5.Password = "invalid-password"
-		req6 := &LoginRequest{
-			Email:    new(string),
-			Password: new(string),
-		}
-		*req6.Email = "invalid@email.com"
-		*req6.Password = "invalid-password"
-		req7 := &LoginRequest{
-			Username: new(string),
-			Password: new(string),
-		}
-		*req7.Username = "other-user"
-		*req7.Password = "123456789"
-		allEmptyReq := &LoginRequest{}
-		emptyPasswordReq := &LoginRequest{
-			Username: new(string),
-			Email:    new(string),
-		}
-		*emptyPasswordReq.Username = "user"
-		*emptyPasswordReq.Email = "user@user.com"
-		onlyPasswordReq := &LoginRequest{
-			Password: new(string),
-		}
-		*onlyPasswordReq.Password = "123456789"
+	tests := []struct {
+		name string
+		req  *LoginRequest
+		err  error
+		mock func(s *mockService)
+	}{{
+		"empty request",
+		genReq(func(req *LoginRequest) {
+			req.UsernameOrEmail = nil
+			req.Password = nil
+		}),
+		ErrInvalidLogin,
+		nil,
+	}, {
+		"invalid username or email",
+		genReq(func(req *LoginRequest) {
+			req.UsernameOrEmail = nil
+		}),
+		ErrInvalidLogin,
+		nil,
+	}, {
+		"invalid username",
+		genReq(func(req *LoginRequest) {
+			*req.UsernameOrEmail = "qwerty"
+		}),
+		ErrInvalidUser,
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "qwerty").Return(nil, ErrRepositoryNotFound)
+		},
+	}, {
+		"invalid password",
+		genReq(func(req *LoginRequest) {
+			*req.Password = "wrong-password"
+		}),
+		ErrInvalidUser,
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "user").Return(mUser, nil)
+		},
+	}, {
+		"login with username and password",
+		genReq(nil),
+		nil,
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "user").Return(mUser, nil)
+			s.authServ.On("Create", mUser.ID.Hex()).Return(mToken, nil)
+			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+		},
+	}, {
+		"login with email and password",
+		genReq(func(req *LoginRequest) {
+			*req.UsernameOrEmail = "user@user.com"
+		}),
+		nil,
+		func(s *mockService) {
+			s.repo.On("FindByUsername", "user@user.com").Return(nil, ErrRepositoryNotFound)
+			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
+			s.authServ.On("Create", mUser.ID.Hex()).Return(mToken, nil)
+			s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
+		},
+	}}
 
-		tests := []struct {
-			req *LoginRequest
-			err error
-		}{{
-			req1,
-			ErrInvalidUser,
-		}, {
-			req2,
-			ErrInvalidUser,
-		}, {
-			req3,
-			ErrInvalidUser,
-		}, {
-			req4,
-			ErrInvalidUser,
-		}, {
-			req5,
-			ErrInvalidUser,
-		}, {
-			req6,
-			ErrInvalidUser,
-		}, {
-			req7,
-			ErrInvalidUser,
-		}, {
-			allEmptyReq,
-			ErrInvalidLogin,
-		}, {
-			emptyPasswordReq,
-			ErrInvalidLogin,
-		}, {
-			onlyPasswordReq,
-			ErrInvalidLogin,
-		}}
-
-		for i, test := range tests {
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
 			serv := newMockService()
-			serv.repo.populate(user1, user2)
-			serv.authServ.populate(user1.ID.Hex(), user2.ID.Hex(), user3.ID.Hex())
+			if test.mock != nil {
+				test.mock(serv)
+			}
 
 			token, err := serv.Login(test.req)
-			if assert.NotNil(err, i) {
-				assert.True(errors.Compare(test.err, err), i)
+
+			if test.err != nil {
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
+				}
+				assert.Nil(token)
+			} else {
+				assert.Nil(err)
+				if assert.NotNil(token) {
+					assert.Equal(mToken, token)
+				}
 			}
-			assert.Nil(token, i)
-
-			if test.req.Password == nil {
-				continue
-			}
-
-			repoCalls := mock.Calls{}
-			if test.req.Username != nil {
-				repoCalls = append(repoCalls, mock.Call("FindByUsername", *test.req.Username))
-			} else if test.req.Email != nil {
-				repoCalls = append(repoCalls, mock.Call("FindByEmail", *test.req.Email))
-			}
-
-			if msg := serv.repo.Mock.Assert(repoCalls...); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-		}
-	})
-
-	t.Run("OK", func(t *testing.T) {
-		assert := assert.New(t)
-
-		req1 := &LoginRequest{
-			Username: new(string),
-			Password: new(string),
-		}
-		*req1.Username = "user"
-		*req1.Password = "123456789"
-		req2 := &LoginRequest{
-			Email:    new(string),
-			Password: new(string),
-		}
-		*req2.Email = "user@user.com"
-		*req2.Password = "123456789"
-		req3 := &LoginRequest{
-			Username: new(string),
-			Email:    new(string),
-			Password: new(string),
-		}
-		*req3.Username = "user"
-		*req3.Email = "user@user.com"
-		*req3.Password = "123456789"
-		req4 := &LoginRequest{
-			Username: new(string),
-			Email:    new(string),
-			Password: new(string),
-		}
-		*req4.Username = "admin"
-		*req4.Email = "admin@admin.com"
-		*req4.Password = "admin1234"
-		req5 := &LoginRequest{
-			Username: new(string),
-			Password: new(string),
-		}
-		*req5.Username = "admin"
-		*req5.Password = "admin1234"
-
-		tests := []struct {
-			req    *LoginRequest
-			userID string
-		}{{
-			req1,
-			user1.ID.Hex(),
-		}, {
-			req2,
-			user1.ID.Hex(),
-		}, {
-			req3,
-			user1.ID.Hex(),
-		}, {
-			req4,
-			user2.ID.Hex(),
-		}, {
-			req5,
-			user2.ID.Hex(),
-		}}
-
-		for i, test := range tests {
-			serv := newMockService()
-			serv.repo.populate(user1, user2)
-			serv.authServ.populate(user1.ID.Hex(), user2.ID.Hex())
-
-			token, err := serv.Login(test.req)
-			assert.Nil(err)
-			if assert.NotNil(token) {
-				assert.Equal(test.userID, token.UserID)
-			}
-
-			repoCalls := mock.Calls{}
-
-			if test.req.Username != nil {
-				repoCalls = append(repoCalls, mock.Call("FindByUsername", *test.req.Username).Return(mock.NotNil, mock.Nil))
-			} else if test.req.Email != nil {
-				repoCalls = append(repoCalls, mock.Call("FindByEmail", *test.req.Email).Return(mock.NotNil, mock.Nil))
-			}
-
-			if msg := serv.repo.Mock.Assert(repoCalls...); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-
-			if msg := serv.authServ.Mock.Assert(
-				mock.Call("Create", mock.NotNil).Return(mock.NotNil, mock.Nil),
-			); msg != "" {
-				t.Errorf("test %d: %s", i, msg)
-			}
-		}
-	})
+			serv.repo.AssertExpectations(t)
+			serv.authServ.AssertExpectations(t)
+			serv.events.AssertExpectations(t)
+		})
+	}
 }
 
 func TestLogout(t *testing.T) {
-	user := newMockUser("")
+	mUser := mockUser()
+	mToken := auth.NewToken(mUser.ID.Hex())
+	mTokenStr, err := mToken.Encode()
+	require.Nil(t, err)
 
-	t.Run("Error", func(t *testing.T) {
-		assert := assert.New(t)
+	tests := []struct {
+		name     string
+		tokenStr string
+		err      error
+		mock     func(s *mockService)
+	}{{
+		"empty token",
+		"",
+		ErrInvalidUser,
+		func(s *mockService) {
+			s.authServ.On("Invalidate", "").Return(nil, auth.ErrInvalidate)
+		},
+	}, {
+		"non existing user",
+		mTokenStr,
+		ErrInvalidUser,
+		func(s *mockService) {
+			s.authServ.On("Invalidate", mTokenStr).Return(mToken, nil)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(nil, ErrRepositoryNotFound)
+		},
+	}, {
+		"success",
+		mTokenStr,
+		nil,
+		func(s *mockService) {
+			s.authServ.On("Invalidate", mTokenStr).Return(mToken, nil)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(mUser, nil)
+		},
+	}}
 
-		tests := []struct {
-			tokenStr func(serv *mockService) string
-			err      error
-		}{{
-			func(serv *mockService) string {
-				return "invalidToken123"
-			},
-			ErrInvalidUser,
-		}, {
-			func(serv *mockService) string {
-				serv.repo.populate(user)
-				return "user"
-			},
-			ErrInvalidUser,
-		}, {
-			func(serv *mockService) string {
-				serv.authServ.populate(user.ID.Hex())
-				return serv.authServ.tokensStr[user.ID.Hex()]
-			},
-			ErrInvalidUser,
-		}}
-
-		for i, test := range tests {
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
 			serv := newMockService()
-			tokenStr := test.tokenStr(serv)
-			token := serv.authServ.tokens[tokenStr]
-
-			err := serv.Logout(tokenStr)
-			if assert.NotNil(err, i) {
-				assert.True(errors.Compare(test.err, err), i)
+			if test.mock != nil {
+				test.mock(serv)
 			}
-			assert.Len(serv.authServ.tokensStr, 0, i)
 
-			if token != nil {
-				if msg := serv.authServ.Mock.Assert(
-					mock.Call("Validate", tokenStr).Return(token, mock.Nil),
-					mock.Call("Invalidate", tokenStr).Return(token, mock.Nil),
-				); msg != "" {
-					t.Errorf("test %d: %s", i, msg)
+			err := serv.Logout(test.tokenStr)
+
+			if test.err != nil {
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
 				}
-
 			} else {
-				if msg := serv.authServ.Mock.Assert(
-					mock.Call("Validate", tokenStr).Return(mock.Nil, mock.NotNil),
-					mock.Call("Invalidate", tokenStr).Return(mock.Nil, mock.NotNil),
-				); msg != "" {
-					t.Errorf("test %d: %s", i, msg)
-				}
+				assert.Nil(err)
 			}
-
-		}
-	})
-
-	t.Run("OK", func(t *testing.T) {
-		assert := assert.New(t)
-
-		serv := newMockService()
-		serv.repo.populate(user)
-		serv.authServ.populate(user.ID.Hex())
-		tokenStr := serv.authServ.tokensStr[user.ID.Hex()]
-		token := serv.authServ.tokens[tokenStr]
-
-		err := serv.Logout(tokenStr)
-		assert.Nil(err)
-
-		if msg := serv.authServ.Mock.Assert(
-			mock.Call("Validate", tokenStr).Return(token, mock.Nil),
-			mock.Call("Invalidate", tokenStr).Return(token, mock.Nil),
-		); msg != "" {
-			t.Errorf("%s", msg)
-		}
-	})
+			serv.authServ.AssertExpectations(t)
+			serv.repo.AssertExpectations(t)
+		})
+	}
 }

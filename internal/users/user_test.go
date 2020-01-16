@@ -10,8 +10,8 @@ func TestUserSetPassword(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
-		in            string
-		out           string
+		pwd           string
+		expected      string
 		shouldBeEqual bool
 	}{
 		{"123456", "12345", false},
@@ -23,9 +23,9 @@ func TestUserSetPassword(t *testing.T) {
 
 	for _, test := range tests {
 		user := NewUser()
-		user.SetPassword(test.in)
+		user.SetPassword(test.pwd)
 		assert.NotEmpty(user.Password)
 		assert.Greater(len(user.Password), 10)
-		assert.Equal(user.ComparePassword(test.out), test.shouldBeEqual)
+		assert.Equal(user.ComparePassword(test.expected), test.shouldBeEqual)
 	}
 }

@@ -2,7 +2,6 @@ package auth
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -24,6 +23,5 @@ func TestToken(t *testing.T) {
 	if assert.NotNil(decodedToken) {
 		assert.Equal(token.ID, decodedToken.ID)
 		assert.Equal(token.UserID, decodedToken.UserID)
-		assert.Equal(token.CreatedAt.Format(time.RFC3339Nano), token.CreatedAt.Format(time.RFC3339Nano))
 	}
 }

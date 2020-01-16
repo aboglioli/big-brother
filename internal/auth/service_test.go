@@ -3,140 +3,200 @@ package auth
 import (
 	"testing"
 
+	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateToken(t *testing.T) {
-	assert := assert.New(t)
+	tests := []struct {
+		name   string
+		userID string
+		err    error
+		mock   func(*mockService)
+	}{{
+		"empty userID",
+		"",
+		nil,
+		func(s *mockService) {
+			s.repo.On("Insert", mock.Anything).Return(nil)
+		},
+	}, {
+		"user123",
+		"user123",
+		nil,
+		func(s *mockService) {
+			s.repo.On("Insert", mock.Anything).Return(nil)
+		},
+	}, {
+		"repo error",
+		"user123",
+		ErrCreate.Wrap(ErrRepositoryInsert),
+		func(s *mockService) {
+			s.repo.On("Insert", mock.Anything).Return(ErrRepositoryInsert)
+		},
+	}}
 
-	serv := newMockService()
-	userID := "user123"
-	token := NewToken(userID)
-	serv.repo.On("Insert", mock.Anything).Return(nil)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
+			serv := newMockService()
+			if test.mock != nil {
+				test.mock(serv)
+			}
 
-	token, err := serv.Create(userID)
-	assert.Nil(err)
-	if assert.NotNil(token) {
-		assert.NotEmpty(token.ID.Hex())
-		assert.Equal(token.UserID, userID)
+			token, err := serv.Create(test.userID)
+
+			if test.err != nil { // Error
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
+				}
+				assert.Nil(token)
+			} else { // OK
+				assert.Nil(err)
+				if assert.NotNil(token) {
+					assert.NotEmpty(token.ID)
+					assert.Equal(test.userID, token.UserID)
+				}
+				serv.repo.AssertCalled(t, "Insert", token)
+			}
+			serv.repo.AssertExpectations(t)
+		})
 	}
-
-	serv.repo.AssertExpectations(t)
 }
 
 func TestValidate(t *testing.T) {
-	t.Run("Error", func(t *testing.T) {
-		assert := assert.New(t)
+	mToken := NewToken("user123")
+	mTokenStr, err := mToken.Encode()
+	require.Nil(t, err)
 
-		tests := []struct {
-			tokenStr string
-			fn       func(*mockRepository)
-		}{{
-			"",
-			nil,
-		}, {
-			"123",
-			nil,
-		}, {
-			"456789abc",
-			nil,
-		}, {
-			"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjcmVhdGVkQXQiOiIyMDIwLTAxLTA1VDAxOjA3OjQxLjcxMTQ0ODY1Ni0wMzowMCIsImlkIjoiNWUxMTYxMGQzNTA1MjI0YTlmNzJmN2Q2IiwidXNlcklkIjoiMTIzNCJ9.fxg_UZMR8fBaVluRmekEslf453DlJ_oA_QX8fv3QkFQ",
-			func(repo *mockRepository) {
-				repo.On("FindByID", "5e11610d3505224a9f72f7d6").Return(&Token{}, ErrUnauthorized)
-			},
-		}, {
-			"123456789",
-			nil,
-		}}
+	tests := []struct {
+		name     string
+		tokenStr string
+		err      error
+		mock     func(s *mockService)
+	}{{
+		"empty tokenStr",
+		"",
+		ErrValidate.Wrap(ErrDecode),
+		nil,
+	}, {
+		"invalid token",
+		"eyJ.eyJj.fxg",
+		ErrValidate.Wrap(ErrDecode),
+		nil,
+	}, {
+		"not saved and valid token",
+		mTokenStr,
+		ErrValidate.Wrap(ErrRepositoryNotFound),
+		func(s *mockService) {
+			s.repo.On("FindByID", mToken.ID).Return(nil, ErrRepositoryNotFound)
+		},
+	}, {
+		"valid token",
+		mTokenStr,
+		nil,
+		func(s *mockService) {
+			s.repo.On("FindByID", mToken.ID).Return(mToken, nil)
+		},
+	}}
 
-		for i, test := range tests {
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
 			serv := newMockService()
-			if test.fn != nil {
-				test.fn(serv.repo)
+			if test.mock != nil {
+				test.mock(serv)
 			}
+
 			token, err := serv.Validate(test.tokenStr)
-			assert.NotNil(err, i)
-			assert.Nil(token, i)
-			serv.repo.AssertExpectations(t)
-		}
-	})
 
-	t.Run("OK", func(t *testing.T) {
-		assert := assert.New(t)
-
-		userID := "user123"
-
-		tests := []struct {
-			userID string
-		}{{userID}, {"123456"}}
-
-		for i, test := range tests {
-			serv := newMockService()
-			token := NewToken(test.userID)
-			tokenStr, err := token.Encode()
-			assert.Nil(err, i)
-
-			serv.repo.On("FindByID", token.ID.Hex()).Return(token, nil)
-
-			validatedToken, err := serv.Validate(tokenStr)
-			assert.Nil(err)
-			if assert.NotNil(validatedToken) {
-				assert.Equal(validatedToken.ID.Hex(), token.ID.Hex())
-				assert.Equal(validatedToken.UserID, token.UserID)
+			if test.err != nil { // Error
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
+				}
+				assert.Nil(token)
+			} else { // OK
+				assert.Nil(err)
+				if assert.NotNil(token) {
+					assert.Equal(mToken.ID, token.ID)
+					assert.Equal(mToken.UserID, token.UserID)
+				}
 			}
-
 			serv.repo.AssertExpectations(t)
-		}
-	})
+		})
+	}
 }
 
 func TestInvalidate(t *testing.T) {
-	t.Run("Error", func(t *testing.T) {
-		assert := assert.New(t)
+	mToken := NewToken("user123")
+	mTokenStr, err := mToken.Encode()
+	require.Nil(t, err)
 
-		tests := []struct {
-			tokenStr string
-		}{{""}, {"1234"}, {"123456"}, {"abc123"}}
+	tests := []struct {
+		name     string
+		tokenStr string
+		err      error
+		mock     func(s *mockService)
+	}{{
+		"empty tokenStr",
+		"",
+		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrDecode)),
+		nil,
+	}, {
+		"invalid tokenStr",
+		"asd.zxc.ey88",
+		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrDecode)),
+		nil,
+	}, {
+		"not saved and valid tokenStr",
+		mTokenStr,
+		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrRepositoryNotFound)),
+		func(s *mockService) {
+			s.repo.On("FindByID", mToken.ID).Return(nil, ErrRepositoryNotFound)
+		},
+	}, {
+		"error on deleting",
+		mTokenStr,
+		ErrInvalidate.Wrap(ErrRepositoryDelete),
+		func(s *mockService) {
+			s.repo.On("FindByID", mToken.ID).Return(mToken, nil)
+			s.repo.On("Delete", mToken.ID).Return(ErrRepositoryDelete)
+		},
+	}, {
+		"valid and saved tokenStr",
+		mTokenStr,
+		nil,
+		func(s *mockService) {
+			s.repo.On("FindByID", mToken.ID).Return(mToken, nil)
+			s.repo.On("Delete", mToken.ID).Return(nil)
+		},
+	}}
 
-		for i, test := range tests {
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
 			serv := newMockService()
-			token, err := serv.Invalidate(test.tokenStr)
-			assert.NotNil(err, i)
-			assert.Nil(token)
-		}
-	})
-
-	t.Run("OK", func(t *testing.T) {
-		assert := assert.New(t)
-
-		userID := "user123"
-		tests := []struct {
-			userID string
-		}{{userID}, {"123456"}, {"abc123"}}
-
-		for i, test := range tests {
-			serv := newMockService()
-			token := NewToken(test.userID)
-			tokenStr, err := token.Encode()
-			assert.Nil(err, i)
-			if err != nil {
-				t.Errorf("test %d: error not expected: %s", i, err)
+			if test.mock != nil {
+				test.mock(serv)
 			}
 
-			serv.repo.On("FindByID", token.ID.Hex()).Return(&Token{
-				ID:        token.ID,
-				UserID:    token.UserID,
-				CreatedAt: token.CreatedAt,
-			}, nil)
-			serv.repo.On("Delete", token.ID.Hex()).Return(nil)
+			token, err := serv.Invalidate(test.tokenStr)
 
-			invalidatedToken, err := serv.Invalidate(tokenStr)
-			assert.Nil(err, i)
-			assert.Equal(token.ID.Hex(), invalidatedToken.ID.Hex(), i)
-
+			if test.err != nil { // Error
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
+				}
+				assert.Nil(token)
+			} else { // OK
+				assert.Nil(err)
+				if assert.NotNil(token) {
+					assert.Equal(mToken.ID, token.ID)
+					assert.Equal(mToken.UserID, token.UserID)
+				}
+			}
 			serv.repo.AssertExpectations(t)
-		}
-	})
+		})
+	}
 }
