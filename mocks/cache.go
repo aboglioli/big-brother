@@ -10,7 +10,7 @@ type MockCache struct {
 	mock.Mock
 }
 
-func NewMockCache(ns string) *MockCache {
+func NewMockCache() *MockCache {
 	return &MockCache{}
 }
 

@@ -31,9 +31,9 @@ func NewRepository(cache cache.Cache) Repository {
 }
 
 func (r *repositoryImpl) FindByID(tokenID string) (*Token, error) {
-	token := r.cache.Get(tokenID)
-	if token == nil {
-		return nil, ErrRepositoryNotFound
+	token, err := r.cache.Get(tokenID)
+	if token == nil || err != nil {
+		return nil, ErrRepositoryNotFound.Wrap(err)
 	}
 	if t, ok := token.(*Token); ok {
 		return t, nil
@@ -43,11 +43,17 @@ func (r *repositoryImpl) FindByID(tokenID string) (*Token, error) {
 }
 
 func (r *repositoryImpl) Insert(token *Token) error {
-	r.cache.Set(token.ID, token, cache.NoExpiration)
+	err := r.cache.Set(token.ID, token, cache.NoExpiration)
+	if err != nil {
+		return ErrRepositoryInsert.Wrap(err)
+	}
 	return nil
 }
 
 func (r *repositoryImpl) Delete(tokenID string) error {
-	r.cache.Delete(tokenID)
+	err := r.cache.Delete(tokenID)
+	if err != nil {
+		return ErrRepositoryDelete.Wrap(err)
+	}
 	return nil
 }

@@ -36,6 +36,8 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+    volumes:
+      - postgres:/var/lib/postgresql
     networks:
       - postgres
 
@@ -45,8 +47,8 @@ services:
     ports:
       - "${PGADMIN_PORT:-8080}:80"
     environment:
-      - PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
-      - PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
     networks:
       - postgres
     depends_on:
@@ -87,6 +89,7 @@ services:
 
 volumes:
   mongo:
+  postgres:
   redis:
   rabbitmq:
 
