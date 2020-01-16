@@ -1,4 +1,4 @@
-package auth
+package models
 
 import (
 	"testing"
@@ -18,7 +18,7 @@ func TestToken(t *testing.T) {
 	assert.NotEmpty(tokenStr)
 
 	// Decode
-	decodedToken, err := decodeToken(tokenStr)
+	decodedToken, err := DecodeToken(tokenStr)
 	assert.Nil(err)
 	if assert.NotNil(decodedToken) {
 		assert.Equal(token.ID, decodedToken.ID)

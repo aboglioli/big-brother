@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/aboglioli/big-brother/pkg/errors"
+	"github.com/aboglioli/big-brother/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -20,21 +21,21 @@ func TestCreateToken(t *testing.T) {
 		"",
 		nil,
 		func(s *mockService) {
-			s.repo.On("Insert", mock.AnythingOfType("*auth.Token")).Return(nil)
+			s.repo.On("Insert", mock.AnythingOfType("*models.Token")).Return(nil)
 		},
 	}, {
 		"user123",
 		"user123",
 		nil,
 		func(s *mockService) {
-			s.repo.On("Insert", mock.AnythingOfType("*auth.Token")).Return(nil)
+			s.repo.On("Insert", mock.AnythingOfType("*models.Token")).Return(nil)
 		},
 	}, {
 		"repo error",
 		"user123",
 		ErrCreate.Wrap(ErrRepositoryInsert),
 		func(s *mockService) {
-			s.repo.On("Insert", mock.AnythingOfType("*auth.Token")).Return(ErrRepositoryInsert)
+			s.repo.On("Insert", mock.AnythingOfType("*models.Token")).Return(ErrRepositoryInsert)
 		},
 	}}
 
@@ -67,7 +68,7 @@ func TestCreateToken(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	mToken := NewToken("user123")
+	mToken := models.NewToken("user123")
 	mTokenStr, err := mToken.Encode()
 	require.Nil(t, err)
 
@@ -79,12 +80,12 @@ func TestValidate(t *testing.T) {
 	}{{
 		"empty tokenStr",
 		"",
-		ErrValidate.Wrap(ErrTokenDecode),
+		ErrValidate.Wrap(models.ErrTokenDecode),
 		nil,
 	}, {
 		"invalid token",
 		"eyJ.eyJj.fxg",
-		ErrValidate.Wrap(ErrTokenDecode),
+		ErrValidate.Wrap(models.ErrTokenDecode),
 		nil,
 	}, {
 		"not saved and valid token",
@@ -130,7 +131,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestInvalidate(t *testing.T) {
-	mToken := NewToken("user123")
+	mToken := models.NewToken("user123")
 	mTokenStr, err := mToken.Encode()
 	require.Nil(t, err)
 
@@ -142,12 +143,12 @@ func TestInvalidate(t *testing.T) {
 	}{{
 		"empty tokenStr",
 		"",
-		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrTokenDecode)),
+		ErrInvalidate.Wrap(ErrValidate.Wrap(models.ErrTokenDecode)),
 		nil,
 	}, {
 		"invalid tokenStr",
 		"asd.zxc.ey88",
-		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrTokenDecode)),
+		ErrInvalidate.Wrap(ErrValidate.Wrap(models.ErrTokenDecode)),
 		nil,
 	}, {
 		"not saved and valid tokenStr",

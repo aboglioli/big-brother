@@ -7,12 +7,13 @@ import (
 	"github.com/aboglioli/big-brother/mocks"
 	"github.com/aboglioli/big-brother/pkg/cache"
 	"github.com/aboglioli/big-brother/pkg/errors"
+	"github.com/aboglioli/big-brother/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFindByID(t *testing.T) {
-	mToken := NewToken("user123")
+	mToken := models.NewToken("user123")
 	mBytes, err := json.Marshal(mToken)
 	require.Nil(t, err)
 
@@ -72,13 +73,13 @@ func TestFindByID(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	mToken := NewToken("user123")
+	mToken := models.NewToken("user123")
 	mBytes, err := json.Marshal(mToken)
 	require.Nil(t, err)
 
 	tests := []struct {
 		name  string
-		token *Token
+		token *models.Token
 		err   error
 		mock  func(c *mocks.MockCache)
 	}{{

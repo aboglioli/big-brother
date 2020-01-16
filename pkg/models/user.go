@@ -1,10 +1,9 @@
-package users
+package models
 
 import (
 	"encoding/json"
 
 	"github.com/aboglioli/big-brother/pkg/config"
-	"github.com/aboglioli/big-brother/pkg/db/models"
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -21,7 +20,7 @@ const (
 )
 
 type User struct {
-	models.Base
+	Base
 	Username string `json:"username" bson:"username" validate:"required,min=4,max=32,alphanumdash"`
 	Password string `json:"password" bson:"password" validate:"required"`
 	Email    string `json:"email" bson:"email" validate:"required,email"`
@@ -34,7 +33,7 @@ type User struct {
 
 func NewUser() *User {
 	return &User{
-		Base:  models.NewBase(),
+		Base:  NewBase(),
 		Roles: []Role{USER},
 	}
 }

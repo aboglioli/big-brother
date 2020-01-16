@@ -2,6 +2,7 @@ package users
 
 import (
 	"github.com/aboglioli/big-brother/pkg/errors"
+	"github.com/aboglioli/big-brother/pkg/models"
 )
 
 // Errors
@@ -14,11 +15,11 @@ var (
 
 // Interfaces
 type Repository interface {
-	FindByID(id string) (*User, error)
-	FindByUsername(username string) (*User, error)
-	FindByEmail(email string) (*User, error)
+	FindByID(id string) (*models.User, error)
+	FindByUsername(username string) (*models.User, error)
+	FindByEmail(email string) (*models.User, error)
 
-	Insert(*User) error
-	Update(*User) error
+	Insert(*models.User) error
+	Update(*models.User) error
 	Delete(id string) error
 }

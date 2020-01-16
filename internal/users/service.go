@@ -4,6 +4,7 @@ import (
 	"github.com/aboglioli/big-brother/internal/auth"
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/aboglioli/big-brother/pkg/events"
+	"github.com/aboglioli/big-brother/pkg/models"
 )
 
 // Errors
@@ -20,13 +21,13 @@ var (
 
 // Interfaces
 type Service interface {
-	GetByID(id string) (*User, error)
+	GetByID(id string) (*models.User, error)
 
-	Register(req *RegisterRequest) (*User, error)
-	Update(id string, req *UpdateRequest) (*User, error)
+	Register(req *RegisterRequest) (*models.User, error)
+	Update(id string, req *UpdateRequest) (*models.User, error)
 	Delete(id string) error
 
-	Login(req *LoginRequest) (*auth.Token, error)
+	Login(req *LoginRequest) (*models.Token, error)
 	Logout(tokenStr string) error
 }
 
@@ -47,7 +48,7 @@ func NewService(repo Repository, events events.Manager, authServ auth.Service) S
 	}
 }
 
-func (s *serviceImpl) GetByID(id string) (*User, error) {
+func (s *serviceImpl) GetByID(id string) (*models.User, error) {
 	return s.getByID(id)
 }
 
@@ -59,7 +60,7 @@ type RegisterRequest struct {
 	Lastname string `json:"lastname"`
 }
 
-func (s *serviceImpl) Register(req *RegisterRequest) (*User, error) {
+func (s *serviceImpl) Register(req *RegisterRequest) (*models.User, error) {
 	errs := make(errors.Errors, 0)
 
 	// Password strength
@@ -67,7 +68,7 @@ func (s *serviceImpl) Register(req *RegisterRequest) (*User, error) {
 		errs = append(errs, err)
 	}
 
-	user := NewUser()
+	user := models.NewUser()
 	user.Username = req.Username
 	user.SetPassword(req.Password)
 	user.Email = req.Email
@@ -117,7 +118,7 @@ type UpdateRequest struct {
 	Lastname *string `json:"lastname"`
 }
 
-func (s *serviceImpl) Update(id string, req *UpdateRequest) (*User, error) {
+func (s *serviceImpl) Update(id string, req *UpdateRequest) (*models.User, error) {
 	user, err := s.getByID(id)
 	if err != nil {
 		return nil, err
@@ -208,7 +209,7 @@ type LoginRequest struct {
 	Password        *string `json:"password"`
 }
 
-func (s *serviceImpl) Login(req *LoginRequest) (*auth.Token, error) {
+func (s *serviceImpl) Login(req *LoginRequest) (*models.Token, error) {
 	vErr := ErrInvalidLogin
 	if req.UsernameOrEmail == nil {
 		vErr = vErr.F("username", "required")
@@ -255,7 +256,7 @@ func (s *serviceImpl) Logout(tokenStr string) error {
 	return nil
 }
 
-func (s *serviceImpl) getByID(id string) (*User, error) {
+func (s *serviceImpl) getByID(id string) (*models.User, error) {
 	user, err := s.repo.FindByID(id)
 	if err != nil || !user.Enabled {
 		return nil, ErrNotFound.C("id", id).Wrap(err)

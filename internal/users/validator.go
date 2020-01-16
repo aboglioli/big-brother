@@ -4,6 +4,7 @@ import (
 	"regexp"
 
 	"github.com/aboglioli/big-brother/pkg/errors"
+	"github.com/aboglioli/big-brother/pkg/models"
 	"github.com/go-playground/validator/v10"
 	"github.com/iancoleman/strcase"
 )
@@ -16,7 +17,7 @@ var (
 
 // Interfaces
 type Validator interface {
-	ValidateSchema(u *User) error
+	ValidateSchema(u *models.User) error
 	ValidatePassword(pwd string) error
 }
 
@@ -55,7 +56,7 @@ func NewValidator() Validator {
 	}
 }
 
-func (v *validatorImpl) ValidateSchema(u *User) error {
+func (v *validatorImpl) ValidateSchema(u *models.User) error {
 	if err := v.validate.Struct(u); err != nil {
 		if errs, ok := err.(validator.ValidationErrors); ok {
 			vErr := ErrSchemaValidation

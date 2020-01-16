@@ -1,6 +1,10 @@
 package users
 
-import "time"
+import ( 
+	"time" 
+
+	"github.com/aboglioli/big-brother/pkg/models"
+)
 
 type UserDTO struct {
 	ID       string `json:"id"`
@@ -14,7 +18,7 @@ type UserDTO struct {
 	Validated bool      `json:"validated"`
 }
 
-func NewDTO(user *User) *UserDTO {
+func NewDTO(user *models.User) *UserDTO {
 	return &UserDTO{
 		ID:       user.ID.Hex(),
 		Username: user.Username,

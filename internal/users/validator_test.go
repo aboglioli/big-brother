@@ -4,80 +4,81 @@ import (
 	"testing"
 
 	"github.com/aboglioli/big-brother/pkg/errors"
+	"github.com/aboglioli/big-brother/pkg/models"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateSchema(t *testing.T) {
 	tests := []struct {
 		name string
-		mock func(u *User)
+		mock func(u *models.User)
 		err  error
 	}{{
 		"empty user",
-		func(u *User) {
-			eu := NewUser()
+		func(u *models.User) {
+			eu := models.NewUser()
 			*u = *eu
 		},
 		ErrSchemaValidation,
 	}, {
 		"empty username",
-		func(u *User) { u.Username = "" },
+		func(u *models.User) { u.Username = "" },
 		ErrSchemaValidation,
 	}, {
 		"invalid username",
-		func(u *User) { u.Username = "aaa" },
+		func(u *models.User) { u.Username = "aaa" },
 		ErrSchemaValidation,
 	}, {
 		"invalid username",
-		func(u *User) { u.Username = "admin#$" },
+		func(u *models.User) { u.Username = "admin#$" },
 		ErrSchemaValidation,
 	}, {
 		"invalid username",
-		func(u *User) { u.Username = "@dmin" },
+		func(u *models.User) { u.Username = "@dmin" },
 		ErrSchemaValidation,
 	}, {
 		"invalid username",
-		func(u *User) { u.Username = "ádmin" },
+		func(u *models.User) { u.Username = "ádmin" },
 		ErrSchemaValidation,
 	}, {
 		"empty password",
-		func(u *User) { u.Password = "" },
+		func(u *models.User) { u.Password = "" },
 		ErrSchemaValidation,
 	}, {
 		"empty email",
-		func(u *User) { u.Email = "" },
+		func(u *models.User) { u.Email = "" },
 		ErrSchemaValidation,
 	}, {
 		"invalid email",
-		func(u *User) { u.Email = "a" },
+		func(u *models.User) { u.Email = "a" },
 		ErrSchemaValidation,
 	}, {
 		"invalid email",
-		func(u *User) { u.Email = "a@a" },
+		func(u *models.User) { u.Email = "a@a" },
 		ErrSchemaValidation,
 	}, {
 		"invalid email",
-		func(u *User) { u.Email = "a@a-.com" },
+		func(u *models.User) { u.Email = "a@a-.com" },
 		ErrSchemaValidation,
 	}, {
 		"invalid email",
-		func(u *User) { u.Email = "a@-a.com" },
+		func(u *models.User) { u.Email = "a@-a.com" },
 		ErrSchemaValidation,
 	}, {
 		"invalid name",
-		func(u *User) { u.Name = "Fulan1to" },
+		func(u *models.User) { u.Name = "Fulan1to" },
 		ErrSchemaValidation,
 	}, {
 		"invalid name",
-		func(u *User) { u.Name = "Ful@ano" },
+		func(u *models.User) { u.Name = "Ful@ano" },
 		ErrSchemaValidation,
 	}, {
 		"invalid lastname",
-		func(u *User) { u.Lastname = "De t@l" },
+		func(u *models.User) { u.Lastname = "De t@l" },
 		ErrSchemaValidation,
 	}, {
 		"invalid lastname",
-		func(u *User) { u.Lastname = "De0tal" },
+		func(u *models.User) { u.Lastname = "De0tal" },
 		ErrSchemaValidation,
 	}, {
 		"valid",
@@ -85,7 +86,7 @@ func TestValidateSchema(t *testing.T) {
 		nil,
 	}, {
 		"valid",
-		func(u *User) {
+		func(u *models.User) {
 			u.Username = "user-name"
 			u.Password = "pwd"
 			u.Email = "user@e-mail.com"
@@ -95,7 +96,7 @@ func TestValidateSchema(t *testing.T) {
 		nil,
 	}, {
 		"accent mark",
-		func(u *User) {
+		func(u *models.User) {
 			u.Name = "Alán"
 			u.Lastname = "Boglioli Caffé"
 		},

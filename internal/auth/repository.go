@@ -5,6 +5,7 @@ import (
 
 	"github.com/aboglioli/big-brother/pkg/cache"
 	"github.com/aboglioli/big-brother/pkg/errors"
+	"github.com/aboglioli/big-brother/pkg/models"
 )
 
 // Errors
@@ -16,8 +17,8 @@ var (
 
 // Interfaces
 type Repository interface {
-	FindByID(tokenID string) (*Token, error)
-	Insert(token *Token) error
+	FindByID(tokenID string) (*models.Token, error)
+	Insert(token *models.Token) error
 	Delete(tokenID string) error
 }
 
@@ -32,7 +33,7 @@ func NewRepository(cache cache.Cache) Repository {
 	}
 }
 
-func (r *repositoryImpl) FindByID(tokenID string) (*Token, error) {
+func (r *repositoryImpl) FindByID(tokenID string) (*models.Token, error) {
 	v, err := r.cache.Get(tokenID)
 	if v == nil || err != nil {
 		return nil, ErrRepositoryNotFound.Wrap(err)
@@ -43,7 +44,7 @@ func (r *repositoryImpl) FindByID(tokenID string) (*Token, error) {
 		return nil, ErrRepositoryNotFound.M("wrong conversion")
 	}
 
-	token := &Token{}
+	token := &models.Token{}
 	if err := json.Unmarshal(b, token); err != nil {
 		return nil, ErrRepositoryNotFound.Wrap(err)
 	}
@@ -51,7 +52,7 @@ func (r *repositoryImpl) FindByID(tokenID string) (*Token, error) {
 	return token, nil
 }
 
-func (r *repositoryImpl) Insert(token *Token) error {
+func (r *repositoryImpl) Insert(token *models.Token) error {
 	b, err := json.Marshal(token)
 	if err != nil {
 		return ErrRepositoryInsert.Wrap(err)

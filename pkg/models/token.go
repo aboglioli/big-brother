@@ -1,10 +1,9 @@
-package auth
+package models
 
 import (
 	"time"
 
 	"github.com/aboglioli/big-brother/pkg/config"
-	"github.com/aboglioli/big-brother/pkg/db"
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/dgrijalva/jwt-go"
 )
@@ -23,7 +22,7 @@ type Token struct {
 
 func NewToken(userID string) *Token {
 	return &Token{
-		ID:        db.NewID(),
+		ID:        NewID(),
 		UserID:    userID,
 		CreatedAt: time.Now().UnixNano(),
 	}
@@ -46,7 +45,7 @@ func (t *Token) Encode() (string, error) {
 	return tokenStr, nil
 }
 
-func decodeToken(tokenStr string) (*Token, error) {
+func DecodeToken(tokenStr string) (*Token, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, ErrTokenSigningMethod

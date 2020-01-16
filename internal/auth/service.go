@@ -2,6 +2,7 @@ package auth
 
 import (
 	"github.com/aboglioli/big-brother/pkg/errors"
+	"github.com/aboglioli/big-brother/pkg/models"
 )
 
 // Errors
@@ -13,9 +14,9 @@ var (
 
 // Interfaces
 type Service interface {
-	Create(userID string) (*Token, error)
-	Validate(tokenStr string) (*Token, error)
-	Invalidate(tokenStr string) (*Token, error)
+	Create(userID string) (*models.Token, error)
+	Validate(tokenStr string) (*models.Token, error)
+	Invalidate(tokenStr string) (*models.Token, error)
 }
 
 // Implementations
@@ -29,8 +30,8 @@ func NewService(repo Repository) Service {
 	}
 }
 
-func (s *serviceImpl) Create(userID string) (*Token, error) {
-	token := NewToken(userID)
+func (s *serviceImpl) Create(userID string) (*models.Token, error) {
+	token := models.NewToken(userID)
 	if err := s.repo.Insert(token); err != nil {
 		return nil, ErrCreate.Wrap(err)
 	}
@@ -38,8 +39,8 @@ func (s *serviceImpl) Create(userID string) (*Token, error) {
 	return token, nil
 }
 
-func (s *serviceImpl) Validate(tokenStr string) (*Token, error) {
-	token, err := decodeToken(tokenStr)
+func (s *serviceImpl) Validate(tokenStr string) (*models.Token, error) {
+	token, err := models.DecodeToken(tokenStr)
 	if err != nil {
 		return nil, ErrValidate.Wrap(err)
 	}
@@ -52,7 +53,7 @@ func (s *serviceImpl) Validate(tokenStr string) (*Token, error) {
 	return t, nil
 }
 
-func (s *serviceImpl) Invalidate(tokenStr string) (*Token, error) {
+func (s *serviceImpl) Invalidate(tokenStr string) (*models.Token, error) {
 	token, err := s.Validate(tokenStr)
 	if err != nil {
 		return nil, ErrInvalidate.Wrap(err)

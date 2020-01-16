@@ -1,8 +1,8 @@
 package users
 
 import (
-	"github.com/aboglioli/big-brother/internal/auth"
 	"github.com/aboglioli/big-brother/mocks"
+	"github.com/aboglioli/big-brother/pkg/models"
 	"github.com/stretchr/testify/mock"
 )
 
@@ -11,7 +11,7 @@ type mockValidator struct {
 	mock.Mock
 }
 
-func (m *mockValidator) ValidateSchema(u *User) error {
+func (m *mockValidator) ValidateSchema(u *models.User) error {
 	args := m.Called(u)
 	return args.Error(0)
 }
@@ -25,36 +25,36 @@ type mockRepository struct {
 	mock.Mock
 }
 
-func (r *mockRepository) FindByID(id string) (*User, error) {
+func (r *mockRepository) FindByID(id string) (*models.User, error) {
 	args := r.Called(id)
-	if user, ok := args.Get(0).(*User); ok {
+	if user, ok := args.Get(0).(*models.User); ok {
 		return user, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-func (r *mockRepository) FindByUsername(username string) (*User, error) {
+func (r *mockRepository) FindByUsername(username string) (*models.User, error) {
 	args := r.Called(username)
-	if user, ok := args.Get(0).(*User); ok {
+	if user, ok := args.Get(0).(*models.User); ok {
 		return user, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-func (r *mockRepository) FindByEmail(email string) (*User, error) {
+func (r *mockRepository) FindByEmail(email string) (*models.User, error) {
 	args := r.Called(email)
-	if user, ok := args.Get(0).(*User); ok {
+	if user, ok := args.Get(0).(*models.User); ok {
 		return user, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-func (r *mockRepository) Insert(u *User) error {
+func (r *mockRepository) Insert(u *models.User) error {
 	args := r.Called(u)
 	return args.Error(0)
 }
 
-func (r *mockRepository) Update(u *User) error {
+func (r *mockRepository) Update(u *models.User) error {
 	args := r.Called(u)
 	return args.Error(0)
 }
@@ -69,25 +69,25 @@ type mockAuthService struct {
 	mock.Mock
 }
 
-func (s *mockAuthService) Create(userID string) (*auth.Token, error) {
+func (s *mockAuthService) Create(userID string) (*models.Token, error) {
 	args := s.Called(userID)
-	if token, ok := args.Get(0).(*auth.Token); ok {
+	if token, ok := args.Get(0).(*models.Token); ok {
 		return token, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-func (s *mockAuthService) Validate(tokenStr string) (*auth.Token, error) {
+func (s *mockAuthService) Validate(tokenStr string) (*models.Token, error) {
 	args := s.Called(tokenStr)
-	if token, ok := args.Get(0).(*auth.Token); ok {
+	if token, ok := args.Get(0).(*models.Token); ok {
 		return token, args.Error(1)
 	}
 	return nil, args.Error(1)
 }
 
-func (s *mockAuthService) Invalidate(tokenStr string) (*auth.Token, error) {
+func (s *mockAuthService) Invalidate(tokenStr string) (*models.Token, error) {
 	args := s.Called(tokenStr)
-	if token, ok := args.Get(0).(*auth.Token); ok {
+	if token, ok := args.Get(0).(*models.Token); ok {
 		return token, args.Error(1)
 	}
 	return nil, args.Error(1)
