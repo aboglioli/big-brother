@@ -98,6 +98,50 @@ func TestCompare(t *testing.T) {
 		Internal.New("internal_1").F("field", "required", "msg %s", "random"),
 		Internal.New("internal_1").F("field", "not_available", "hello %s", "world"),
 		false,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1")),
+		Status.New("status_1").Wrap(Internal.New("internal_1")),
+		true,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1")),
+		Status.New("status_1").Wrap(Internal.New("internal_2")),
+		false,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1")),
+		Status.New("status_1"),
+		false,
+	}, {
+		Status.New("status_1"),
+		Status.New("status_1").Wrap(Internal.New("internal_1")),
+		true,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1").Wrap(errors.New("err"))),
+		Status.New("status_1").Wrap(Internal.New("internal_1").Wrap(errors.New("err"))),
+		true,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1").Wrap(errors.New("err1"))),
+		Status.New("status_1").Wrap(Internal.New("internal_1").Wrap(errors.New("err2"))),
+		false,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1").Wrap(errors.New("err"))),
+		Status.New("status_1").Wrap(Internal.New("internal_1")),
+		false,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1")),
+		Status.New("status_1").Wrap(Internal.New("internal_1").Wrap(errors.New("err"))),
+		true,
+	}, {
+		Status.New("status_1"),
+		Status.New("status_1").Wrap(Internal.New("internal_1").Wrap(errors.New("err"))),
+		true,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "required", "msg1")),
+		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "required", "msg2").Wrap(errors.New("err"))),
+		false,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "required", "msg1")),
+		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "not_available", "msg2")),
+		false,
 	}}
 
 	for i, test := range tests {

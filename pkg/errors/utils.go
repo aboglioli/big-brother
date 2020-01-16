@@ -32,7 +32,29 @@ func Compare(expected, actual error) bool {
 			return false
 		}
 
-		return err1.Equals(err2)
+		sameFields := true
+		if len(err1.Fields) > 0 {
+			if len(err1.Fields) != len(err2.Fields) {
+				return false
+			}
+			for i, field1 := range err1.Fields {
+				field2 := err2.Fields[i]
+				if field1.Field != field2.Field || field1.Code != field2.Code {
+					sameFields = false
+					break
+				}
+			}
+		}
+
+		sameCause := true
+		if err1.Cause != nil {
+			if err2.Cause == nil {
+				return false
+			}
+			sameCause = Compare(err1.Cause, err2.Cause)
+		}
+
+		return err1.Equals(err2) && sameFields && sameCause
 	case error:
 		return err1.Error() == actual.Error()
 	}
