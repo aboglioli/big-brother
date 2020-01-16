@@ -20,21 +20,21 @@ func TestCreateToken(t *testing.T) {
 		"",
 		nil,
 		func(s *mockService) {
-			s.repo.On("Insert", mock.Anything).Return(nil)
+			s.repo.On("Insert", mock.AnythingOfType("*auth.Token")).Return(nil)
 		},
 	}, {
 		"user123",
 		"user123",
 		nil,
 		func(s *mockService) {
-			s.repo.On("Insert", mock.Anything).Return(nil)
+			s.repo.On("Insert", mock.AnythingOfType("*auth.Token")).Return(nil)
 		},
 	}, {
 		"repo error",
 		"user123",
 		ErrCreate.Wrap(ErrRepositoryInsert),
 		func(s *mockService) {
-			s.repo.On("Insert", mock.Anything).Return(ErrRepositoryInsert)
+			s.repo.On("Insert", mock.AnythingOfType("*auth.Token")).Return(ErrRepositoryInsert)
 		},
 	}}
 

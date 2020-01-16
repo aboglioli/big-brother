@@ -411,7 +411,7 @@ func TestUpdate(t *testing.T) {
 			req.Username = utils.NewString("new-user")
 			req.Email = utils.NewString("new@email.com")
 		}),
-		ErrNotAvailable,
+		ErrNotAvailable.F("username", "not_available").F("email", "not_available"),
 		func(s *mockService) {
 			u := copyUser(mUser)
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
@@ -422,6 +422,29 @@ func TestUpdate(t *testing.T) {
 			s.repo.On("FindByUsername", "new-user").Return(eu1, nil)
 			s.repo.On("FindByEmail", "new@email.com").Return(eu2, nil)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
+		},
+	}, {
+		"error on update",
+		mUser.ID.Hex(),
+		genReq(nil),
+		ErrUpdate.Wrap(ErrRepositoryUpdate),
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
+			s.repo.On("Update", mock.AnythingOfType("*users.User")).Return(ErrRepositoryUpdate)
+		},
+	}, {
+		"error on publishing",
+		mUser.ID.Hex(),
+		genReq(nil),
+		ErrUpdate.Wrap(events.ErrPublish),
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
+			s.repo.On("Update", mock.AnythingOfType("*users.User")).Return(nil)
+			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(events.ErrPublish)
 		},
 	}, {
 		"valid update",
@@ -439,6 +462,18 @@ func TestUpdate(t *testing.T) {
 			s.repo.On("FindByEmail", "new@email.com").Return(nil, ErrRepositoryNotFound)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.validator.On("ValidatePassword", "new-password").Return(nil)
+			s.repo.On("Update", mock.AnythingOfType("*users.User")).Return(nil)
+			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
+		},
+	}, {
+		"change name only",
+		mUser.ID.Hex(),
+		genReq(nil),
+		nil,
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.validator.On("ValidateSchema", mock.AnythingOfType("*users.User")).Return(nil)
 			s.repo.On("Update", mock.AnythingOfType("*users.User")).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
 		},
@@ -507,6 +542,25 @@ func TestDelete(t *testing.T) {
 			u := copyUser(mUser)
 			u.Validated = false
 			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+		},
+	}, {
+		"error on delete",
+		mUser.ID.Hex(),
+		ErrDelete.Wrap(ErrRepositoryDelete),
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("Delete", mUser.ID.Hex()).Return(ErrRepositoryDelete)
+		},
+	}, {
+		"error on publish",
+		mUser.ID.Hex(),
+		ErrDelete.Wrap(events.ErrPublish),
+		func(s *mockService) {
+			u := copyUser(mUser)
+			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("Delete", mUser.ID.Hex()).Return(nil)
+			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(events.ErrPublish)
 		},
 	}, {
 		"success",
