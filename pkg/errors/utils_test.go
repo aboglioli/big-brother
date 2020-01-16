@@ -91,6 +91,10 @@ func TestCompare(t *testing.T) {
 		Internal.New("internal_1").F("field", "required"),
 		true,
 	}, {
+		Internal.New("internal_1").F("field", "required"),
+		Internal.New("internal_1").F("field", "required").F("asd", "qwe"),
+		false,
+	}, {
 		Internal.New("internal_1").F("field", "required", "msg %s", "random"),
 		Internal.New("internal_1").F("field", "required", "hello %s", "world"),
 		true,
@@ -137,10 +141,38 @@ func TestCompare(t *testing.T) {
 	}, {
 		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "required", "msg1")),
 		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "required", "msg2").Wrap(errors.New("err"))),
-		false,
+		true,
 	}, {
 		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "required", "msg1")),
 		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "not_available", "msg2")),
+		false,
+	}, {
+		Status.New("status_1").C("id", "123"),
+		Status.New("status_1").C("id", "123"),
+		true,
+	}, {
+		Status.New("status_1").C("id", "123"),
+		Status.New("status_1").C("id", "124"),
+		false,
+	}, {
+		Status.New("status_1").C("id", "123"),
+		Status.New("status_1").C("ids", "123"),
+		false,
+	}, {
+		Status.New("status_1").C("id", "123"),
+		Status.New("status_1").C("id", "123").C("other", "yes"),
+		false,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "required").C("id", "123")),
+		Status.New("status_1").Wrap(Internal.New("internal_1").C("id", "123").F("field", "required")),
+		true,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "required").C("id", "124")),
+		Status.New("status_1").Wrap(Internal.New("internal_1").C("id", "123").F("field", "required")),
+		false,
+	}, {
+		Status.New("status_1").Wrap(Internal.New("internal_1").F("field", "required").C("id", "123")),
+		Status.New("status_1").Wrap(Internal.New("internal_1").C("id", "123").F("field", "not_available")),
 		false,
 	}}
 

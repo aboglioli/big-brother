@@ -79,12 +79,12 @@ func TestValidate(t *testing.T) {
 	}{{
 		"empty tokenStr",
 		"",
-		ErrValidate.Wrap(ErrDecode),
+		ErrValidate.Wrap(ErrTokenDecode),
 		nil,
 	}, {
 		"invalid token",
 		"eyJ.eyJj.fxg",
-		ErrValidate.Wrap(ErrDecode),
+		ErrValidate.Wrap(ErrTokenDecode),
 		nil,
 	}, {
 		"not saved and valid token",
@@ -142,12 +142,12 @@ func TestInvalidate(t *testing.T) {
 	}{{
 		"empty tokenStr",
 		"",
-		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrDecode)),
+		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrTokenDecode)),
 		nil,
 	}, {
 		"invalid tokenStr",
 		"asd.zxc.ey88",
-		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrDecode)),
+		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrTokenDecode)),
 		nil,
 	}, {
 		"not saved and valid tokenStr",

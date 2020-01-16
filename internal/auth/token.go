@@ -10,9 +10,9 @@ import (
 )
 
 var (
-	ErrEncode        = errors.Internal.New("auth.token.encode")
-	ErrSigningMethod = errors.Internal.New("auth.token.signing_method")
-	ErrDecode        = errors.Internal.New("auth.token.decode")
+	ErrTokenEncode        = errors.Internal.New("auth.token.encode")
+	ErrTokenSigningMethod = errors.Internal.New("auth.token.signing_method")
+	ErrTokenDecode        = errors.Internal.New("auth.token.decode")
 )
 
 type Token struct {
@@ -40,7 +40,7 @@ func (t *Token) Encode() (string, error) {
 
 	tokenStr, err := jwtToken.SignedString(config.JWTSecret)
 	if err != nil {
-		return "", ErrEncode.Wrap(err)
+		return "", ErrTokenEncode.Wrap(err)
 	}
 
 	return tokenStr, nil
@@ -49,19 +49,19 @@ func (t *Token) Encode() (string, error) {
 func decodeToken(tokenStr string) (*Token, error) {
 	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, ErrSigningMethod
+			return nil, ErrTokenSigningMethod
 		}
 
 		config := config.Get()
 		return config.JWTSecret, nil
 	})
 	if err != nil {
-		return nil, ErrDecode.Wrap(err)
+		return nil, ErrTokenDecode.Wrap(err)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok || !token.Valid {
-		return nil, ErrDecode
+		return nil, ErrTokenDecode
 	}
 
 	id := claims["id"].(string)
