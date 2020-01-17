@@ -14,7 +14,10 @@ run:
 test:
 	go test ./...
 
-short-test:
+vtest:
+	go test ./... -v
+
+stest:
 	go test -short ./...
 
 lint:
