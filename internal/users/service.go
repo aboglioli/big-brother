@@ -9,14 +9,16 @@ import (
 
 // Errors
 var (
-	ErrNotFound     = errors.Status.New("user.service.not_found").S(404)
-	ErrNotValidated = errors.Status.New("user.service.not_validated")
-	ErrRegister     = errors.Status.New("user.service.register")
-	ErrNotAvailable = errors.Validation.New("user.not_available")
-	ErrUpdate       = errors.Status.New("user.service.update")
-	ErrDelete       = errors.Status.New("user.service.delete")
-	ErrInvalidUser  = errors.Status.New("user.service.invalid_user")
-	ErrInvalidLogin = errors.Validation.New("user.service.invalid_login")
+	ErrInvalidID      = errors.Status.New("user.service.invalid_id")
+	ErrNotFound       = errors.Status.New("user.service.not_found").S(404)
+	ErrNotValidated   = errors.Status.New("user.service.not_validated")
+	ErrRegister       = errors.Status.New("user.service.register")
+	ErrNotAvailable   = errors.Validation.New("user.not_available")
+	ErrUpdate         = errors.Status.New("user.service.update")
+	ErrChangePassword = errors.Status.New("user.service.change_password")
+	ErrDelete         = errors.Status.New("user.service.delete")
+	ErrInvalidUser    = errors.Status.New("user.service.invalid_user")
+	ErrInvalidLogin   = errors.Validation.New("user.service.invalid_login")
 )
 
 // Interfaces
@@ -25,6 +27,7 @@ type Service interface {
 
 	Register(req *RegisterRequest) (*models.User, error)
 	Update(id string, req *UpdateRequest) (*models.User, error)
+	ChangePassword(id string, req *ChangePasswordRequest) error
 	Delete(id string) error
 
 	Login(req *LoginRequest) (string, error)
@@ -203,6 +206,38 @@ func (s *service) Update(id string, req *UpdateRequest) (*models.User, error) {
 	return user, nil
 }
 
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password"`
+	NewPassword     string `json:"new_password"`
+}
+
+func (s *service) ChangePassword(id string, req *ChangePasswordRequest) error {
+	user, err := s.getByID(id)
+	if err != nil {
+		return err
+	}
+
+	if err := s.validator.ValidatePassword(req.NewPassword); err != nil {
+		return err
+	}
+
+	if !s.crypt.Compare(user.Password, req.CurrentPassword) {
+		return ErrInvalidUser
+	}
+
+	hash, err := s.crypt.Hash(req.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	user.Password = hash
+	if err := s.repo.Update(user); err != nil {
+		return ErrChangePassword.Wrap(err)
+	}
+
+	return nil
+}
+
 func (s *service) Delete(id string) error {
 	user, err := s.getByID(id)
 	if err != nil {
@@ -279,6 +314,10 @@ func (s *service) Logout(tokenStr string) error {
 }
 
 func (s *service) getByID(id string) (*models.User, error) {
+	if id == "" {
+		return nil, ErrInvalidID
+	}
+
 	user, err := s.repo.FindByID(id)
 	if err != nil || !user.Enabled {
 		return nil, ErrNotFound.C("id", id).Wrap(err)

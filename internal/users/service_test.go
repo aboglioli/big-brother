@@ -24,11 +24,6 @@ func mockUser() *models.User {
 	return user
 }
 
-func copyUser(u *models.User) *models.User {
-	copy := *u
-	return &copy
-}
-
 func TestGetByID(t *testing.T) {
 	mUser := mockUser()
 
@@ -38,6 +33,11 @@ func TestGetByID(t *testing.T) {
 		err  error
 		mock func(s *mockService)
 	}{{
+		"empty id",
+		"",
+		ErrInvalidID,
+		nil,
+	}, {
 		"invalid id",
 		"123",
 		ErrNotFound,
@@ -63,7 +63,7 @@ func TestGetByID(t *testing.T) {
 		mUser.ID,
 		ErrNotValidated,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			u.Validated = false
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
@@ -72,7 +72,7 @@ func TestGetByID(t *testing.T) {
 		mUser.ID,
 		ErrNotFound,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			u.Enabled = false
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
@@ -93,7 +93,7 @@ func TestGetByID(t *testing.T) {
 				test.mock(serv)
 			}
 
-			user, err := serv.GetByID(test.id)
+			user, err := serv.service.GetByID(test.id)
 
 			if test.err != nil { // Error
 				if assert.NotNil(err) {
@@ -302,7 +302,7 @@ func TestUpdate(t *testing.T) {
 		err  error
 		mock func(s *mockService)
 	}{{
-		"invalid id",
+		"GetByID",
 		"abc123",
 		genReq(nil),
 		ErrNotFound,
@@ -315,7 +315,7 @@ func TestUpdate(t *testing.T) {
 		genReq(nil),
 		ErrNotFound,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			u.Enabled = false
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
@@ -325,7 +325,7 @@ func TestUpdate(t *testing.T) {
 		genReq(nil),
 		ErrNotValidated,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			u.Validated = false
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
@@ -338,7 +338,7 @@ func TestUpdate(t *testing.T) {
 		}),
 		errors.Errors{ErrSchemaValidation},
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", u).Return(ErrSchemaValidation)
 		},
@@ -351,7 +351,7 @@ func TestUpdate(t *testing.T) {
 		}),
 		errors.Errors{ErrPasswordValidation, ErrSchemaValidation},
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidatePassword", "222").Return(ErrPasswordValidation)
 			s.validator.On("ValidateSchema", u).Return(ErrSchemaValidation)
@@ -365,7 +365,7 @@ func TestUpdate(t *testing.T) {
 		}),
 		errors.Errors{ErrSchemaValidation},
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", u).Return(ErrSchemaValidation)
 		},
@@ -377,7 +377,7 @@ func TestUpdate(t *testing.T) {
 		}),
 		errors.Errors{ErrPasswordValidation},
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.validator.On("ValidatePassword", "1245").Return(ErrPasswordValidation)
@@ -390,12 +390,11 @@ func TestUpdate(t *testing.T) {
 		}),
 		ErrNotAvailable,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			eUser := mockUser()
 			eUser.Username = "new-user"
 			s.repo.On("FindByUsername", "new-user").Return(eUser, nil)
-
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 		},
 	}, {
@@ -406,7 +405,7 @@ func TestUpdate(t *testing.T) {
 		}),
 		ErrNotAvailable,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			eUser := mockUser()
 			eUser.Email = "new@email.com"
@@ -423,7 +422,7 @@ func TestUpdate(t *testing.T) {
 		}),
 		ErrNotAvailable.F("username", "not_available").F("email", "not_available"),
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			eu1 := mockUser()
 			eu1.Username = "new-user"
@@ -439,7 +438,7 @@ func TestUpdate(t *testing.T) {
 		genReq(nil),
 		ErrUpdate.Wrap(ErrRepositoryUpdate),
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.repo.On("Update", mock.AnythingOfType("*models.User")).Return(ErrRepositoryUpdate)
@@ -450,7 +449,7 @@ func TestUpdate(t *testing.T) {
 		genReq(nil),
 		ErrUpdate.Wrap(events.ErrPublish),
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.repo.On("Update", mock.AnythingOfType("*models.User")).Return(nil)
@@ -466,7 +465,7 @@ func TestUpdate(t *testing.T) {
 		}),
 		nil,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.repo.On("FindByUsername", "new-user").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "new@email.com").Return(nil, ErrRepositoryNotFound)
@@ -482,7 +481,7 @@ func TestUpdate(t *testing.T) {
 		genReq(nil),
 		nil,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.repo.On("Update", mock.AnythingOfType("*models.User")).Return(nil)
@@ -527,6 +526,136 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+func TestChangePassword(t *testing.T) {
+	mUser := mockUser()
+
+	genReq := func(cb func(req *ChangePasswordRequest)) *ChangePasswordRequest {
+		req := &ChangePasswordRequest{
+			CurrentPassword: "12345678",
+			NewPassword:     "qwertyui",
+		}
+		if cb != nil {
+			cb(req)
+		}
+		return req
+	}
+
+	tests := []struct {
+		name string
+		id   string
+		req  *ChangePasswordRequest
+		err  error
+		mock func(s *mockService)
+	}{{
+		"empty id",
+		"",
+		genReq(nil),
+		ErrInvalidID,
+		nil,
+	}, {
+		"invalid id",
+		"asd123",
+		genReq(nil),
+		ErrNotFound,
+		func(s *mockService) {
+			s.repo.On("FindByID", "asd123").Return(nil, ErrRepositoryNotFound)
+		},
+	}, {
+		"empty current password",
+		mUser.ID,
+		genReq(func(req *ChangePasswordRequest) {
+			req.CurrentPassword = ""
+		}),
+		ErrInvalidUser,
+		func(s *mockService) {
+			s.validator.On("ValidatePassword", "qwertyui").Return(nil)
+			s.repo.On("FindByID", mUser.ID).Return(mUser, nil)
+			s.crypt.On("Compare", mUser.Password, "").Return(false)
+		},
+	}, {
+		"empty new password",
+		mUser.ID,
+		genReq(func(req *ChangePasswordRequest) {
+			req.NewPassword = ""
+		}),
+		ErrPasswordValidation,
+		func(s *mockService) {
+			s.repo.On("FindByID", mUser.ID).Return(mUser, nil)
+			s.validator.On("ValidatePassword", "").Return(ErrPasswordValidation)
+		},
+	}, {
+		"weak new password",
+		mUser.ID,
+		genReq(func(req *ChangePasswordRequest) {
+			req.NewPassword = "abcd"
+		}),
+		ErrPasswordValidation,
+		func(s *mockService) {
+			s.repo.On("FindByID", mUser.ID).Return(mUser, nil)
+			s.validator.On("ValidatePassword", "abcd").Return(ErrPasswordValidation)
+		},
+	}, {
+		"invalid passwords",
+		mUser.ID,
+		genReq(func(req *ChangePasswordRequest) {
+			req.CurrentPassword = "1234"
+			req.NewPassword = "abcd"
+		}),
+		ErrPasswordValidation,
+		func(s *mockService) {
+			s.repo.On("FindByID", mUser.ID).Return(mUser, nil)
+			s.validator.On("ValidatePassword", "abcd").Return(ErrPasswordValidation)
+		},
+	}, {
+		"mistmatch password",
+		mUser.ID,
+		genReq(func(req *ChangePasswordRequest) {
+			req.CurrentPassword = "wrong-password"
+		}),
+		ErrInvalidUser,
+		func(s *mockService) {
+			s.validator.On("ValidatePassword", "qwertyui").Return(nil)
+			s.repo.On("FindByID", mUser.ID).Return(mUser, nil)
+			s.crypt.On("Compare", mUser.Password, "wrong-password").Return(false)
+		},
+	}, {
+		"success",
+		mUser.ID,
+		genReq(nil),
+		nil,
+		func(s *mockService) {
+			s.validator.On("ValidatePassword", "qwertyui").Return(nil)
+			s.repo.On("FindByID", mUser.ID).Return(mUser, nil)
+			s.crypt.On("Compare", mUser.Password, "12345678").Return(true)
+			s.crypt.On("Hash", "qwertyui").Return("new.hashed.password", nil)
+			s.repo.On("Update", mock.AnythingOfType("*models.User")).Return(nil)
+		},
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert := assert.New(t)
+			serv := newMockService()
+			if test.mock != nil {
+				test.mock(serv)
+			}
+
+			err := serv.ChangePassword(test.id, test.req)
+
+			if test.err != nil {
+				if assert.NotNil(err) {
+					errors.Assert(t, test.err, err)
+				}
+			} else {
+				assert.Nil(err)
+			}
+			serv.validator.AssertExpectations(t)
+			serv.repo.AssertExpectations(t)
+			serv.crypt.AssertExpectations(t)
+		})
+	}
+}
+
 func TestDelete(t *testing.T) {
 	mUser := mockUser()
 
@@ -547,7 +676,7 @@ func TestDelete(t *testing.T) {
 		mUser.ID,
 		ErrNotFound,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			u.Enabled = false
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
@@ -556,7 +685,7 @@ func TestDelete(t *testing.T) {
 		mUser.ID,
 		ErrNotValidated,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			u.Validated = false
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
@@ -565,7 +694,7 @@ func TestDelete(t *testing.T) {
 		mUser.ID,
 		ErrDelete.Wrap(ErrRepositoryDelete),
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.repo.On("Delete", mUser.ID).Return(ErrRepositoryDelete)
 		},
@@ -574,7 +703,7 @@ func TestDelete(t *testing.T) {
 		mUser.ID,
 		ErrDelete.Wrap(events.ErrPublish),
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.repo.On("Delete", mUser.ID).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(events.ErrPublish)
@@ -584,7 +713,7 @@ func TestDelete(t *testing.T) {
 		mUser.ID,
 		nil,
 		func(s *mockService) {
-			u := copyUser(mUser)
+			u := mUser.Clone()
 			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.repo.On("Delete", mUser.ID).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)

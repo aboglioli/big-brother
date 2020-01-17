@@ -107,12 +107,21 @@ func (m *mockPasswordCrypt) Compare(hashedPwd, pwd string) bool {
 
 // Service
 type mockService struct {
+	mock.Mock
 	*service
 	repo      *mockRepository
 	events    *mocks.MockEventManager
 	validator *mockValidator
 	crypt     *mockPasswordCrypt
 	authServ  *mockAuthService
+}
+
+func (s *mockService) GetByID(id string) (*models.User, error) {
+	args := s.Called(id)
+	if u, ok := args.Get(0).(*models.User); ok {
+		return u, args.Error(1)
+	}
+	return nil, args.Error(1)
 }
 
 func newMockService() *mockService {

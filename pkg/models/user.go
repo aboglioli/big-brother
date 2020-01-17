@@ -36,6 +36,11 @@ func NewUser() *User {
 	}
 }
 
+func (u *User) Clone() *User {
+	c := *u
+	return &c
+}
+
 func (u *User) String() string {
 	b, err := json.Marshal(u)
 	if err != nil {
