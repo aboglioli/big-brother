@@ -25,8 +25,7 @@ func TestConnect(t *testing.T) {
 	}
 	if assert.NotNil(db) {
 		_, err := db.Exec(`
-			DROP TABLE test_table;
-			CREATE TABLE test_table (
+			CREATE TABLE IF NOT EXISTS test_table (
 				name text,
 				age integer
 			);
@@ -43,12 +42,11 @@ func TestConnect(t *testing.T) {
 
 		rows, err := db.Query("SELECT COUNT(*) FROM test_table")
 		assert.Nil(err)
-		for rows.Next() {
-			var count int
-			err := rows.Scan(&count)
-			assert.Nil(err)
-			assert.Equal(count, 2)
-		}
+		rows.Next()
+		var count int
+		err = rows.Scan(&count)
+		assert.Nil(err)
+		assert.Equal(2, count)
 
 		type person struct {
 			name string
@@ -66,6 +64,9 @@ func TestConnect(t *testing.T) {
 		}
 		assert.Nil(rows.Err())
 		assert.Len(people, 2)
+
+		_, err = db.Exec("DROP TABLE test_table")
+		assert.Nil(err)
 	}
 
 }

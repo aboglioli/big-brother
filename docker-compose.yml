@@ -38,6 +38,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
     volumes:
       - postgres:/var/lib/postgresql
+      - ./migrations:/migrations
     networks:
       - postgres
 
