@@ -23,17 +23,17 @@ type Repository interface {
 }
 
 // Implementations
-type repositoryImpl struct {
+type repository struct {
 	cache cache.Cache
 }
 
 func NewRepository(cache cache.Cache) Repository {
-	return &repositoryImpl{
+	return &repository{
 		cache: cache,
 	}
 }
 
-func (r *repositoryImpl) FindByID(tokenID string) (*models.Token, error) {
+func (r *repository) FindByID(tokenID string) (*models.Token, error) {
 	v, err := r.cache.Get(tokenID)
 	if v == nil || err != nil {
 		return nil, ErrRepositoryNotFound.Wrap(err)
@@ -52,7 +52,7 @@ func (r *repositoryImpl) FindByID(tokenID string) (*models.Token, error) {
 	return token, nil
 }
 
-func (r *repositoryImpl) Insert(token *models.Token) error {
+func (r *repository) Insert(token *models.Token) error {
 	b, err := json.Marshal(token)
 	if err != nil {
 		return ErrRepositoryInsert.Wrap(err)
@@ -64,7 +64,7 @@ func (r *repositoryImpl) Insert(token *models.Token) error {
 	return nil
 }
 
-func (r *repositoryImpl) Delete(tokenID string) error {
+func (r *repository) Delete(tokenID string) error {
 	err := r.cache.Delete(tokenID)
 	if err != nil {
 		return ErrRepositoryDelete.Wrap(err)

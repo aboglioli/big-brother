@@ -45,7 +45,7 @@ func (m *mockRepository) Delete(tokenID string) error {
 
 // Service
 type mockService struct {
-	*serviceImpl
+	*service
 	repo *mockRepository
 	enc  *mockEncoder
 }
@@ -53,7 +53,7 @@ type mockService struct {
 func newMockService() *mockService {
 	repo := &mockRepository{}
 	enc := &mockEncoder{}
-	serv := &serviceImpl{
+	serv := &service{
 		repo: repo,
 		enc:  enc,
 	}

@@ -1,7 +1,7 @@
 package users
 
-import ( 
-	"time" 
+import (
+	"time"
 
 	"github.com/aboglioli/big-brother/pkg/models"
 )

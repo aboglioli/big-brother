@@ -5,7 +5,7 @@ import (
 
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/aboglioli/big-brother/pkg/models"
-	"github.com/go-playground/validator/v10"
+	govalidator "github.com/go-playground/validator/v10"
 	"github.com/iancoleman/strcase"
 )
 
@@ -22,13 +22,13 @@ type Validator interface {
 }
 
 // Implementations
-type validatorImpl struct {
-	validate *validator.Validate
+type validator struct {
+	validate *govalidator.Validate
 }
 
 func NewValidator() Validator {
 	alphaWithSpacesRE := regexp.MustCompile("^[a-zA-Záéíóú ]*$")
-	alphaWithSpaces := func(fl validator.FieldLevel) bool {
+	alphaWithSpaces := func(fl govalidator.FieldLevel) bool {
 		str := fl.Field().String()
 		if str == "invalid" {
 			return false
@@ -38,7 +38,7 @@ func NewValidator() Validator {
 	}
 
 	alphaNumWithDashRE := regexp.MustCompile("^[a-zA-Z0-9-]*$")
-	alphaNumWithDash := func(fl validator.FieldLevel) bool {
+	alphaNumWithDash := func(fl govalidator.FieldLevel) bool {
 		str := fl.Field().String()
 		if str == "invalid" {
 			return false
@@ -47,18 +47,18 @@ func NewValidator() Validator {
 		return alphaNumWithDashRE.MatchString(str)
 	}
 
-	validate := validator.New()
+	validate := govalidator.New()
 	validate.RegisterValidation("alphaspaces", alphaWithSpaces)
 	validate.RegisterValidation("alphanumdash", alphaNumWithDash)
 
-	return &validatorImpl{
+	return &validator{
 		validate: validate,
 	}
 }
 
-func (v *validatorImpl) ValidateSchema(u *models.User) error {
+func (v *validator) ValidateSchema(u *models.User) error {
 	if err := v.validate.Struct(u); err != nil {
-		if errs, ok := err.(validator.ValidationErrors); ok {
+		if errs, ok := err.(govalidator.ValidationErrors); ok {
 			vErr := ErrSchemaValidation
 			for _, err := range errs {
 				field := strcase.ToLowerCamel(err.Field())
@@ -73,7 +73,7 @@ func (v *validatorImpl) ValidateSchema(u *models.User) error {
 	return nil
 }
 
-func (v *validatorImpl) ValidatePassword(pwd string) error {
+func (v *validator) ValidatePassword(pwd string) error {
 	if len(pwd) < 8 {
 		return ErrPasswordValidation.F("password", "too_weak")
 	}

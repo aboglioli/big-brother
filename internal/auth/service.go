@@ -12,28 +12,28 @@ var (
 	ErrInvalidate = errors.Status.New("auth.service.invalidate")
 )
 
-// Interfaces
+// Interface
 type Service interface {
 	Create(userID string) (string, error)
 	Validate(tokenStr string) (*models.Token, error)
 	Invalidate(tokenStr string) (*models.Token, error)
 }
 
-// Implementations
-type serviceImpl struct {
+// Implementation
+type service struct {
 	repo Repository
 	enc  Encoder
 }
 
 func NewService(repo Repository) Service {
 	enc := NewEncoder()
-	return &serviceImpl{
+	return &service{
 		repo: repo,
 		enc:  enc,
 	}
 }
 
-func (s *serviceImpl) Create(userID string) (string, error) {
+func (s *service) Create(userID string) (string, error) {
 	if userID == "" {
 		return "", ErrCreate
 	}
@@ -51,7 +51,7 @@ func (s *serviceImpl) Create(userID string) (string, error) {
 	return tokenStr, nil
 }
 
-func (s *serviceImpl) Validate(tokenStr string) (*models.Token, error) {
+func (s *service) Validate(tokenStr string) (*models.Token, error) {
 	tokenID, err := s.enc.Decode(tokenStr)
 	if tokenID == "" || err != nil {
 		return nil, ErrValidate.Wrap(err)
@@ -65,7 +65,7 @@ func (s *serviceImpl) Validate(tokenStr string) (*models.Token, error) {
 	return token, nil
 }
 
-func (s *serviceImpl) Invalidate(tokenStr string) (*models.Token, error) {
+func (s *service) Invalidate(tokenStr string) (*models.Token, error) {
 	token, err := s.Validate(tokenStr)
 	if err != nil {
 		return nil, ErrInvalidate.Wrap(err)

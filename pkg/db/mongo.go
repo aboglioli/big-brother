@@ -10,35 +10,34 @@ import (
 )
 
 var (
-	ErrConnect = errors.Internal.New("mongo.connect")
-	ErrPing    = errors.Internal.New("mongo.ping")
+	ErrMongoConnect = errors.Internal.New("mongo.connect")
 )
 
-func Connect() (*mongo.Client, error) {
+func ConnectMongo(url, database, username, password string) (*mongo.Database, error) {
 	config := config.Get()
 	ctx := context.Background()
 
-	options := options.Client().ApplyURI(config.MongoURL).SetAuth(
+	options := options.Client().ApplyURI(url).SetAuth(
 		options.Credential{
 			AuthSource: config.MongoAuthSource,
-			Username:   config.MongoUsername,
-			Password:   config.MongoPassword,
+			Username:   username,
+			Password:   password,
 		},
 	)
 
 	client, err := mongo.Connect(ctx, options)
 	if err != nil {
-		return nil, ErrConnect.M("failed to connect to Mongo in %s", config.MongoURL).
-			C("mongoUrl", config.MongoURL).
-			C("mongoUsername", config.MongoUsername).
-			C("mongoPassword", config.MongoPassword).
+		return nil, ErrMongoConnect.M("failed to connect to Mongo in %s", url).
+			C("mongoUrl", url).
+			C("mongoUsername", username).
+			C("mongoPassword", password).
 			Wrap(err)
 	}
 
 	err = client.Ping(ctx, nil)
 	if err != nil {
-		return nil, ErrPing.M("failed to ping Mongo").Wrap(err)
+		return nil, ErrMongoConnect.M("failed to ping Mongo").Wrap(err)
 	}
 
-	return client, nil
+	return client.Database(database), nil
 }

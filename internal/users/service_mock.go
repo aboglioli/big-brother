@@ -92,7 +92,7 @@ func (s *mockAuthService) Invalidate(tokenStr string) (*models.Token, error) {
 
 // Service
 type mockService struct {
-	*serviceImpl
+	*service
 	repo      *mockRepository
 	events    *mocks.MockEventManager
 	validator *mockValidator
@@ -105,7 +105,7 @@ func newMockService() *mockService {
 	validator := &mockValidator{}
 	authServ := &mockAuthService{}
 
-	serv := &serviceImpl{
+	serv := &service{
 		repo:      repo,
 		events:    events,
 		validator: validator,

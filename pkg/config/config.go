@@ -12,13 +12,16 @@ type service struct {
 }
 
 type Configuration struct {
-	Discovery service `json:"discovery"`
-	User      service `json:"user"`
+	User service `json:"user"`
 
 	MongoURL        string `json:"mongoUrl"`
 	MongoAuthSource string `json:"mongoAuthSource"`
 	MongoUsername   string `json:"mongoUsername"`
 	MongoPassword   string `json:"mongoPassword"`
+
+	PostgresURL      string `json:"postgresUrl"`
+	PostgresUsername string `json:"postgresUsername"`
+	PostgresPassword string `json:"postgresPassword"`
 
 	RabbitURL string `json:"rabbitUrl"`
 
@@ -38,13 +41,16 @@ var config *Configuration
 func Get() Configuration {
 	once.Do(func() {
 		config = &Configuration{
-			Discovery: service{Port: 1492},
-			User:      service{Port: 3344},
+			User: service{Port: 3344},
 
 			MongoURL:        "mongodb://localhost:27017",
 			MongoAuthSource: "admin",
 			MongoUsername:   "admin",
 			MongoPassword:   "admin",
+
+			PostgresURL:      "localhost:5432",
+			PostgresUsername: "admin",
+			PostgresPassword: "admin",
 
 			RabbitURL: "amqp://guest:guest@localhost:5672",
 

@@ -32,7 +32,7 @@ type Service interface {
 }
 
 // Implementations
-type serviceImpl struct {
+type service struct {
 	repo      Repository
 	events    events.Manager
 	validator Validator
@@ -40,7 +40,7 @@ type serviceImpl struct {
 }
 
 func NewService(repo Repository, events events.Manager, authServ auth.Service) Service {
-	return &serviceImpl{
+	return &service{
 		repo:      repo,
 		events:    events,
 		validator: NewValidator(),
@@ -48,7 +48,7 @@ func NewService(repo Repository, events events.Manager, authServ auth.Service) S
 	}
 }
 
-func (s *serviceImpl) GetByID(id string) (*models.User, error) {
+func (s *service) GetByID(id string) (*models.User, error) {
 	return s.getByID(id)
 }
 
@@ -60,7 +60,7 @@ type RegisterRequest struct {
 	Lastname string `json:"lastname"`
 }
 
-func (s *serviceImpl) Register(req *RegisterRequest) (*models.User, error) {
+func (s *service) Register(req *RegisterRequest) (*models.User, error) {
 	errs := make(errors.Errors, 0)
 
 	// Password strength
@@ -103,7 +103,10 @@ func (s *serviceImpl) Register(req *RegisterRequest) (*models.User, error) {
 
 	// Emit event
 	userCreatedEvent := NewUserEvent(user, "UserCreated")
-	if err := s.events.Publish(userCreatedEvent, &events.Options{"user", "user.created", ""}); err != nil {
+	if err := s.events.Publish(
+		userCreatedEvent,
+		&events.Options{Exchange: "user", Route: "user.created"},
+	); err != nil {
 		return nil, ErrRegister.Wrap(err)
 	}
 
@@ -118,7 +121,7 @@ type UpdateRequest struct {
 	Lastname *string `json:"lastname"`
 }
 
-func (s *serviceImpl) Update(id string, req *UpdateRequest) (*models.User, error) {
+func (s *service) Update(id string, req *UpdateRequest) (*models.User, error) {
 	user, err := s.getByID(id)
 	if err != nil {
 		return nil, err
@@ -177,14 +180,17 @@ func (s *serviceImpl) Update(id string, req *UpdateRequest) (*models.User, error
 
 	// Emit event
 	userUpdatedEvent := NewUserEvent(user, "UserUpdated")
-	if err := s.events.Publish(userUpdatedEvent, &events.Options{"user", "user.updated", ""}); err != nil {
+	if err := s.events.Publish(
+		userUpdatedEvent,
+		&events.Options{Exchange: "user", Route: "user.updated"},
+	); err != nil {
 		return nil, ErrUpdate.Wrap(err)
 	}
 
 	return user, nil
 }
 
-func (s *serviceImpl) Delete(id string) error {
+func (s *service) Delete(id string) error {
 	user, err := s.getByID(id)
 	if err != nil {
 		return err
@@ -197,7 +203,10 @@ func (s *serviceImpl) Delete(id string) error {
 
 	// Emit event
 	userDeletedEvent := NewUserEvent(user, "UserDeleted")
-	if err := s.events.Publish(userDeletedEvent, &events.Options{"user", "user.deleted", ""}); err != nil {
+	if err := s.events.Publish(
+		userDeletedEvent,
+		&events.Options{Exchange: "user", Route: "user.deleted"},
+	); err != nil {
 		return ErrDelete.Wrap(err)
 	}
 
@@ -209,7 +218,7 @@ type LoginRequest struct {
 	Password        *string `json:"password"`
 }
 
-func (s *serviceImpl) Login(req *LoginRequest) (string, error) {
+func (s *service) Login(req *LoginRequest) (string, error) {
 	vErr := ErrInvalidLogin
 	if req.UsernameOrEmail == nil {
 		vErr = vErr.F("username", "required")
@@ -242,7 +251,7 @@ func (s *serviceImpl) Login(req *LoginRequest) (string, error) {
 	return tokenStr, nil
 }
 
-func (s *serviceImpl) Logout(tokenStr string) error {
+func (s *service) Logout(tokenStr string) error {
 	token, err := s.authServ.Invalidate(tokenStr)
 
 	if err != nil {
@@ -256,7 +265,7 @@ func (s *serviceImpl) Logout(tokenStr string) error {
 	return nil
 }
 
-func (s *serviceImpl) getByID(id string) (*models.User, error) {
+func (s *service) getByID(id string) (*models.User, error) {
 	user, err := s.repo.FindByID(id)
 	if err != nil || !user.Enabled {
 		return nil, ErrNotFound.C("id", id).Wrap(err)
