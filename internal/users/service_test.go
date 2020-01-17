@@ -106,7 +106,11 @@ func TestGetByID(t *testing.T) {
 					assert.Equal(test.id, user.ID)
 				}
 			}
+			serv.crypt.AssertExpectations(t)
 			serv.repo.AssertExpectations(t)
+			serv.validator.AssertExpectations(t)
+			serv.events.AssertExpectations(t)
+			serv.authServ.AssertExpectations(t)
 		})
 	}
 }
@@ -269,9 +273,11 @@ func TestRegister(t *testing.T) {
 				serv.validator.AssertCalled(t, "ValidateSchema", user)
 				serv.repo.AssertCalled(t, "Insert", user)
 			}
+			serv.crypt.AssertExpectations(t)
 			serv.repo.AssertExpectations(t)
 			serv.validator.AssertExpectations(t)
 			serv.events.AssertExpectations(t)
+			serv.authServ.AssertExpectations(t)
 		})
 	}
 }
@@ -512,9 +518,11 @@ func TestUpdate(t *testing.T) {
 				serv.validator.AssertCalled(t, "ValidateSchema", user)
 				serv.repo.AssertCalled(t, "Update", user)
 			}
-			serv.validator.AssertExpectations(t)
+			serv.crypt.AssertExpectations(t)
 			serv.repo.AssertExpectations(t)
+			serv.validator.AssertExpectations(t)
 			serv.events.AssertExpectations(t)
+			serv.authServ.AssertExpectations(t)
 		})
 	}
 }
@@ -597,7 +605,14 @@ func TestDelete(t *testing.T) {
 				if assert.NotNil(err) {
 					errors.Assert(t, test.err, err)
 				}
+			} else {
+				assert.Nil(err)
 			}
+			serv.crypt.AssertExpectations(t)
+			serv.repo.AssertExpectations(t)
+			serv.validator.AssertExpectations(t)
+			serv.events.AssertExpectations(t)
+			serv.authServ.AssertExpectations(t)
 		})
 	}
 }
@@ -704,9 +719,11 @@ func TestLogin(t *testing.T) {
 					assert.Equal(mTokenStr, tokenStr)
 				}
 			}
+			serv.crypt.AssertExpectations(t)
 			serv.repo.AssertExpectations(t)
-			serv.authServ.AssertExpectations(t)
+			serv.validator.AssertExpectations(t)
 			serv.events.AssertExpectations(t)
+			serv.authServ.AssertExpectations(t)
 		})
 	}
 }
@@ -763,8 +780,11 @@ func TestLogout(t *testing.T) {
 			} else {
 				assert.Nil(err)
 			}
-			serv.authServ.AssertExpectations(t)
 			serv.repo.AssertExpectations(t)
+			serv.authServ.AssertExpectations(t)
+			serv.events.AssertExpectations(t)
+			serv.validator.AssertExpectations(t)
+			serv.crypt.AssertExpectations(t)
 		})
 	}
 }
