@@ -53,35 +53,35 @@ func TestGetByID(t *testing.T) {
 		},
 	}, {
 		"not found in db",
-		mUser.ID.Hex(),
+		mUser.ID,
 		ErrNotFound.Wrap(ErrRepositoryNotFound),
 		func(s *mockService) {
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(nil, ErrRepositoryNotFound)
+			s.repo.On("FindByID", mUser.ID).Return(nil, ErrRepositoryNotFound)
 		},
 	}, {
 		"not validated",
-		mUser.ID.Hex(),
+		mUser.ID,
 		ErrNotValidated,
 		func(s *mockService) {
 			u := copyUser(mUser)
 			u.Validated = false
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
 	}, {
 		"not enabled",
-		mUser.ID.Hex(),
+		mUser.ID,
 		ErrNotFound,
 		func(s *mockService) {
 			u := copyUser(mUser)
 			u.Enabled = false
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
 	}, {
 		"existing user",
-		mUser.ID.Hex(),
+		mUser.ID,
 		nil,
 		func(s *mockService) {
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(mUser, nil)
+			s.repo.On("FindByID", mUser.ID).Return(mUser, nil)
 		},
 	}}
 
@@ -103,7 +103,7 @@ func TestGetByID(t *testing.T) {
 			} else { // OK
 				assert.Nil(err)
 				if assert.NotNil(user) {
-					assert.Equal(test.id, user.ID.Hex())
+					assert.Equal(test.id, user.ID)
 				}
 			}
 			serv.repo.AssertExpectations(t)
@@ -254,7 +254,7 @@ func TestRegister(t *testing.T) {
 			} else {
 				assert.Nil(err)
 				if assert.NotNil(user) {
-					assert.NotEmpty(user.ID.Hex())
+					assert.NotEmpty(user.ID)
 					assert.Equal(test.req.Username, user.Username)
 					assert.NotEqual(test.req.Password, user.Password)
 					assert.True(user.ComparePassword(test.req.Password))
@@ -301,27 +301,27 @@ func TestUpdate(t *testing.T) {
 		},
 	}, {
 		"not enabled user",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(nil),
 		ErrNotFound,
 		func(s *mockService) {
 			u := copyUser(mUser)
 			u.Enabled = false
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
 	}, {
 		"not validated user",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(nil),
 		ErrNotValidated,
 		func(s *mockService) {
 			u := copyUser(mUser)
 			u.Validated = false
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
 	}, {
 		"invalid name and lastname",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(func(req *UpdateRequest) {
 			req.Name = utils.NewString("11111")
 			req.Lastname = utils.NewString("22222")
@@ -329,12 +329,12 @@ func TestUpdate(t *testing.T) {
 		errors.Errors{ErrSchemaValidation},
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", u).Return(ErrSchemaValidation)
 		},
 	}, {
 		"invalid name and password",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(func(req *UpdateRequest) {
 			req.Name = utils.NewString("11111")
 			req.Password = utils.NewString("222")
@@ -342,13 +342,13 @@ func TestUpdate(t *testing.T) {
 		errors.Errors{ErrPasswordValidation, ErrSchemaValidation},
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidatePassword", "222").Return(ErrPasswordValidation)
 			s.validator.On("ValidateSchema", u).Return(ErrSchemaValidation)
 		},
 	}, {
 		"invalid username and email",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(func(req *UpdateRequest) {
 			req.Username = utils.NewString("new user")
 			req.Email = utils.NewString("inválid@-email.c")
@@ -356,32 +356,32 @@ func TestUpdate(t *testing.T) {
 		errors.Errors{ErrSchemaValidation},
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", u).Return(ErrSchemaValidation)
 		},
 	}, {
 		"invalid password",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(func(req *UpdateRequest) {
 			req.Password = utils.NewString("1245")
 		}),
 		errors.Errors{ErrPasswordValidation},
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.validator.On("ValidatePassword", "1245").Return(ErrPasswordValidation)
 		},
 	}, {
 		"username not available",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(func(req *UpdateRequest) {
 			req.Username = utils.NewString("new-user")
 		}),
 		ErrNotAvailable,
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			eUser := mockUser()
 			eUser.Username = "new-user"
 			s.repo.On("FindByUsername", "new-user").Return(eUser, nil)
@@ -390,14 +390,14 @@ func TestUpdate(t *testing.T) {
 		},
 	}, {
 		"email not available",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(func(req *UpdateRequest) {
 			req.Email = utils.NewString("new@email.com")
 		}),
 		ErrNotAvailable,
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			eUser := mockUser()
 			eUser.Email = "new@email.com"
 			s.repo.On("FindByEmail", "new@email.com").Return(eUser, nil)
@@ -406,7 +406,7 @@ func TestUpdate(t *testing.T) {
 		},
 	}, {
 		"username and email not available",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(func(req *UpdateRequest) {
 			req.Username = utils.NewString("new-user")
 			req.Email = utils.NewString("new@email.com")
@@ -414,7 +414,7 @@ func TestUpdate(t *testing.T) {
 		ErrNotAvailable.F("username", "not_available").F("email", "not_available"),
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			eu1 := mockUser()
 			eu1.Username = "new-user"
 			eu2 := mockUser()
@@ -425,30 +425,30 @@ func TestUpdate(t *testing.T) {
 		},
 	}, {
 		"error on update",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(nil),
 		ErrUpdate.Wrap(ErrRepositoryUpdate),
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.repo.On("Update", mock.AnythingOfType("*models.User")).Return(ErrRepositoryUpdate)
 		},
 	}, {
 		"error on publishing",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(nil),
 		ErrUpdate.Wrap(events.ErrPublish),
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.repo.On("Update", mock.AnythingOfType("*models.User")).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(events.ErrPublish)
 		},
 	}, {
 		"valid update",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(func(req *UpdateRequest) {
 			req.Username = utils.NewString("new-user")
 			req.Email = utils.NewString("new@email.com")
@@ -457,7 +457,7 @@ func TestUpdate(t *testing.T) {
 		nil,
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.repo.On("FindByUsername", "new-user").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "new@email.com").Return(nil, ErrRepositoryNotFound)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
@@ -467,12 +467,12 @@ func TestUpdate(t *testing.T) {
 		},
 	}, {
 		"change name only",
-		mUser.ID.Hex(),
+		mUser.ID,
 		genReq(nil),
 		nil,
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.repo.On("Update", mock.AnythingOfType("*models.User")).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
@@ -497,7 +497,7 @@ func TestUpdate(t *testing.T) {
 			} else {
 				assert.Nil(err)
 				if assert.NotNil(user) {
-					assert.Equal(test.id, user.ID.Hex())
+					assert.Equal(test.id, user.ID)
 					assert.NotEqual(mUser, user)
 				}
 				serv.validator.AssertCalled(t, "ValidateSchema", user)
@@ -527,49 +527,49 @@ func TestDelete(t *testing.T) {
 		},
 	}, {
 		"not enabled",
-		mUser.ID.Hex(),
+		mUser.ID,
 		ErrNotFound,
 		func(s *mockService) {
 			u := copyUser(mUser)
 			u.Enabled = false
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
 	}, {
 		"not validated",
-		mUser.ID.Hex(),
+		mUser.ID,
 		ErrNotValidated,
 		func(s *mockService) {
 			u := copyUser(mUser)
 			u.Validated = false
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
 	}, {
 		"error on delete",
-		mUser.ID.Hex(),
+		mUser.ID,
 		ErrDelete.Wrap(ErrRepositoryDelete),
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
-			s.repo.On("Delete", mUser.ID.Hex()).Return(ErrRepositoryDelete)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
+			s.repo.On("Delete", mUser.ID).Return(ErrRepositoryDelete)
 		},
 	}, {
 		"error on publish",
-		mUser.ID.Hex(),
+		mUser.ID,
 		ErrDelete.Wrap(events.ErrPublish),
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
-			s.repo.On("Delete", mUser.ID.Hex()).Return(nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
+			s.repo.On("Delete", mUser.ID).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(events.ErrPublish)
 		},
 	}, {
 		"success",
-		mUser.ID.Hex(),
+		mUser.ID,
 		nil,
 		func(s *mockService) {
 			u := copyUser(mUser)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(u, nil)
-			s.repo.On("Delete", mUser.ID.Hex()).Return(nil)
+			s.repo.On("FindByID", mUser.ID).Return(u, nil)
+			s.repo.On("Delete", mUser.ID).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
 		},
 	}}
@@ -653,7 +653,7 @@ func TestLogin(t *testing.T) {
 		nil,
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(mUser, nil)
-			s.authServ.On("Create", mUser.ID.Hex()).Return(mTokenStr, nil)
+			s.authServ.On("Create", mUser.ID).Return(mTokenStr, nil)
 			// s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
 		},
 	}, {
@@ -665,7 +665,7 @@ func TestLogin(t *testing.T) {
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user@user.com").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
-			s.authServ.On("Create", mUser.ID.Hex()).Return(mTokenStr, nil)
+			s.authServ.On("Create", mUser.ID).Return(mTokenStr, nil)
 			// s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
 		},
 	}}
@@ -700,7 +700,7 @@ func TestLogin(t *testing.T) {
 
 func TestLogout(t *testing.T) {
 	mUser := mockUser()
-	mToken := models.NewToken(mUser.ID.Hex())
+	mToken := models.NewToken(mUser.ID)
 	mTokenStr := "encoded.token"
 
 	tests := []struct {
@@ -721,7 +721,7 @@ func TestLogout(t *testing.T) {
 		ErrInvalidUser,
 		func(s *mockService) {
 			s.authServ.On("Invalidate", mTokenStr).Return(mToken, nil)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(nil, ErrRepositoryNotFound)
+			s.repo.On("FindByID", mUser.ID).Return(nil, ErrRepositoryNotFound)
 		},
 	}, {
 		"success",
@@ -729,7 +729,7 @@ func TestLogout(t *testing.T) {
 		nil,
 		func(s *mockService) {
 			s.authServ.On("Invalidate", mTokenStr).Return(mToken, nil)
-			s.repo.On("FindByID", mUser.ID.Hex()).Return(mUser, nil)
+			s.repo.On("FindByID", mUser.ID).Return(mUser, nil)
 		},
 	}}
 

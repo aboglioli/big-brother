@@ -1,9 +1,10 @@
 package models
 
+type Permission string
+
 const (
-	UNAUTHORIZED = iota
-	READ
-	WRITE
-	UPDATE
-	DELETE
+	CREATE = Permission("c")
+	READ   = Permission("r")
+	UPDATE = Permission("u")
+	DELETE = Permission("d")
 )

@@ -7,10 +7,16 @@ GRANT ALL PRIVILEGES ON DATABASE users_and_organizations TO admin;
 \c users_and_organizations
 -- Modules
 CREATE TABLE IF NOT EXISTS modules (
-    id UUID PRIMARY KEY,
-    name VARCHAR(32) NOT NULL,
-    slug VARCHAR(32) NOT NULL
+    slug VARCHAR(32) PRIMARY KEY,
+    name VARCHAR(32) NOT NULL
 );
+
+INSERT INTO modules(slug, name) VALUES('organization', 'Negocio');
+INSERT INTO modules(slug, name) VALUES('employee', 'Empleados');
+INSERT INTO modules(slug, name) VALUES('product', 'Productos');
+INSERT INTO modules(slug, name) VALUES('buy', 'Compras');
+INSERT INTO modules(slug, name) VALUES('sell', 'Ventas');
+INSERT INTO modules(slug, name) VALUES('provider', 'Proveedores');
 
 -- Users, organizations and roles
 CREATE TABLE IF NOT EXISTS users (
@@ -51,10 +57,10 @@ CREATE TABLE IF NOT EXISTS employees (
 );
 
 CREATE TABLE IF NOT EXISTS permissions (
-    module_id UUID,
+    module_slug VARCHAR(32),
     role_id  UUID,
-    permission SMALLINT NOT NULL,
-    PRIMARY KEY (module_id, role_id),
-    FOREIGN KEY (module_id) REFERENCES modules(id),
+    permission VARCHAR(10),
+    PRIMARY KEY (module_slug, role_id),
+    FOREIGN KEY (module_slug) REFERENCES modules(slug),
     FOREIGN KEY (role_id) REFERENCES roles(id)
 );

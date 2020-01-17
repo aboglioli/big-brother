@@ -20,7 +20,7 @@ type UserDTO struct {
 
 func NewDTO(user *models.User) *UserDTO {
 	return &UserDTO{
-		ID:       user.ID.Hex(),
+		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
 		Name:     user.Name,

@@ -154,14 +154,14 @@ func (s *service) Update(id string, req *UpdateRequest) (*models.User, error) {
 
 	vErr := ErrNotAvailable
 	if req.Username != nil {
-		if existing, _ := s.repo.FindByUsername(*req.Username); existing != nil && existing.ID.Hex() != id {
+		if existing, _ := s.repo.FindByUsername(*req.Username); existing != nil && existing.ID != id {
 			vErr = vErr.F("username", "not_available")
 		} else {
 			user.Username = *req.Username
 		}
 	}
 	if req.Email != nil {
-		if existing, _ := s.repo.FindByEmail(*req.Email); existing != nil && existing.ID.Hex() != id {
+		if existing, _ := s.repo.FindByEmail(*req.Email); existing != nil && existing.ID != id {
 			vErr = vErr.F("email", "not_available")
 		} else {
 			user.Email = *req.Email
@@ -243,7 +243,7 @@ func (s *service) Login(req *LoginRequest) (string, error) {
 		return "", ErrInvalidUser
 	}
 
-	tokenStr, err := s.authServ.Create(user.ID.Hex())
+	tokenStr, err := s.authServ.Create(user.ID)
 	if err != nil {
 		return "", ErrInvalidUser.Wrap(err)
 	}
