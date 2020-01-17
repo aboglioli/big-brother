@@ -3,9 +3,7 @@ package models
 import (
 	"encoding/json"
 
-	"github.com/aboglioli/big-brother/pkg/config"
 	"github.com/aboglioli/big-brother/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -21,38 +19,21 @@ const (
 
 type User struct {
 	Base
-	Username string `json:"username" bson:"username" validate:"required,min=4,max=32,alphanumdash"`
-	Password string `json:"password" bson:"password" validate:"required"`
-	Email    string `json:"email" bson:"email" validate:"required,min=5,max=64,email"`
-	Name     string `json:"name" bson:"name" validate:"required,min=2,max=32,alphaspaces"`
-	Lastname string `json:"lastname" bson:"lastname" validate:"required,min=2,max=32,alphaspaces"`
-	Roles    []Role `json:"roles" bson:"roles"`
+	Username string `json:"username"validate:"required,min=4,max=32,alphanumdash"`
+	Password string `json:"password" validate:"required"`
+	Email    string `json:"email" validate:"required,min=5,max=64,email"`
+	Name     string `json:"name" validate:"required,min=2,max=32,alphaspaces"`
+	Lastname string `json:"lastname" validate:"required,min=2,max=32,alphaspaces"`
+	Role     Role   `json:"role"`
 
 	Validated bool `json:"validated" bson:"validated"`
 }
 
 func NewUser() *User {
 	return &User{
-		Base:  NewBase(),
-		Roles: []Role{USER},
+		Base: NewBase(),
+		Role: USER,
 	}
-}
-
-func (u *User) SetPassword(pwd string) error {
-	config := config.Get()
-	hash, err := bcrypt.GenerateFromPassword([]byte(pwd), config.BcryptCost)
-	if err != nil {
-		return ErrSetPassword.M("cannot generate hash from password %s", pwd).C("password", pwd).Wrap(err)
-	}
-	u.Password = string(hash)
-	return nil
-}
-
-func (u *User) ComparePassword(pwd string) bool {
-	if err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(pwd)); err != nil {
-		return false
-	}
-	return true
 }
 
 func (u *User) String() string {

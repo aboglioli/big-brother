@@ -60,7 +60,7 @@ func Get() Configuration {
 
 			AuthEnabled: false,
 			JWTSecret:   []byte("my_secret_key"),
-			BcryptCost:  bcrypt.MinCost,
+			BcryptCost:  bcrypt.DefaultCost,
 		}
 
 		file, err := os.Open("config.json")

@@ -90,12 +90,28 @@ func (s *mockAuthService) Invalidate(tokenStr string) (*models.Token, error) {
 	return nil, args.Error(1)
 }
 
+// Crypt
+type mockPasswordCrypt struct {
+	mock.Mock
+}
+
+func (m *mockPasswordCrypt) Hash(pwd string) (string, error) {
+	args := m.Called(pwd)
+	return args.String(0), args.Error(1)
+}
+
+func (m *mockPasswordCrypt) Compare(hashedPwd, pwd string) bool {
+	args := m.Called(hashedPwd, pwd)
+	return args.Bool(0)
+}
+
 // Service
 type mockService struct {
 	*service
 	repo      *mockRepository
 	events    *mocks.MockEventManager
 	validator *mockValidator
+	crypt     *mockPasswordCrypt
 	authServ  *mockAuthService
 }
 
@@ -103,14 +119,23 @@ func newMockService() *mockService {
 	repo := &mockRepository{}
 	events := mocks.NewMockEventManager()
 	validator := &mockValidator{}
+	crypt := &mockPasswordCrypt{}
 	authServ := &mockAuthService{}
 
 	serv := &service{
 		repo:      repo,
 		events:    events,
 		validator: validator,
+		crypt:     crypt,
 		authServ:  authServ,
 	}
 
-	return &mockService{serv, repo, events, validator, authServ}
+	return &mockService{
+		service:   serv,
+		repo:      repo,
+		events:    events,
+		validator: validator,
+		crypt:     crypt,
+		authServ:  authServ,
+	}
 }

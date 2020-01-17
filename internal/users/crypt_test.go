@@ -1,12 +1,13 @@
-package models
+package users
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func TestUserSetPassword(t *testing.T) {
+func TestPasswordCrypt(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -22,10 +23,12 @@ func TestUserSetPassword(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		user := NewUser()
-		user.SetPassword(test.pwd)
-		assert.NotEmpty(user.Password)
-		assert.Greater(len(user.Password), 10)
-		assert.Equal(user.ComparePassword(test.expected), test.shouldBeEqual)
+		crypt := &bcryptCrypt{bcrypt.MinCost}
+
+		hash, err := crypt.Hash(test.pwd)
+		assert.Nil(err)
+		assert.Greater(len(hash), 10)
+
+		assert.Equal(crypt.Compare(hash, test.expected), test.shouldBeEqual)
 	}
 }

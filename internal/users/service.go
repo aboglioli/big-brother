@@ -36,6 +36,7 @@ type service struct {
 	repo      Repository
 	events    events.Manager
 	validator Validator
+	crypt     PasswordCrypt
 	authServ  auth.Service
 }
 
@@ -44,6 +45,7 @@ func NewService(repo Repository, events events.Manager, authServ auth.Service) S
 		repo:      repo,
 		events:    events,
 		validator: NewValidator(),
+		crypt:     NewBcryptCrypt(),
 		authServ:  authServ,
 	}
 }
@@ -70,7 +72,7 @@ func (s *service) Register(req *RegisterRequest) (*models.User, error) {
 
 	user := models.NewUser()
 	user.Username = req.Username
-	user.SetPassword(req.Password)
+	user.Password = req.Password
 	user.Email = req.Email
 	user.Name = req.Name
 	user.Lastname = req.Lastname
@@ -95,6 +97,13 @@ func (s *service) Register(req *RegisterRequest) (*models.User, error) {
 	if len(vErr.Fields) > 0 {
 		return nil, vErr
 	}
+
+	// Set password
+	hash, err := s.crypt.Hash(req.Password)
+	if err != nil {
+		return nil, ErrRegister.Wrap(err)
+	}
+	user.Password = hash
 
 	// Insert
 	if err := s.repo.Insert(user); err != nil {
@@ -132,7 +141,11 @@ func (s *service) Update(id string, req *UpdateRequest) (*models.User, error) {
 		if err := s.validator.ValidatePassword(*req.Password); err != nil {
 			errs = append(errs, ErrPasswordValidation)
 		} else {
-			user.SetPassword(*req.Password)
+			hash, err := s.crypt.Hash(*req.Password)
+			if err != nil {
+				return nil, ErrUpdate.Wrap(err)
+			}
+			user.Password = hash
 		}
 	}
 
@@ -239,7 +252,7 @@ func (s *service) Login(req *LoginRequest) (string, error) {
 		return "", ErrInvalidUser.Wrap(err)
 	}
 
-	if !user.ComparePassword(*req.Password) {
+	if !s.crypt.Compare(user.Password, *req.Password) {
 		return "", ErrInvalidUser
 	}
 

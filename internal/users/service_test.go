@@ -15,7 +15,7 @@ import (
 func mockUser() *models.User {
 	user := models.NewUser()
 	user.Username = "user"
-	user.SetPassword("12345678")
+	user.Password = "hashed.password"
 	user.Email = "user@user.com"
 	user.Name = "Name"
 	user.Lastname = "Lastname"
@@ -190,6 +190,7 @@ func TestRegister(t *testing.T) {
 			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.validator.On("ValidatePassword", "12345678").Return(nil)
+			s.crypt.On("Hash", "12345678").Return("hashed.password", nil)
 			s.repo.On("Insert", mock.AnythingOfType("*models.User")).Return(ErrRepositoryInsert)
 		},
 	}, {
@@ -201,6 +202,7 @@ func TestRegister(t *testing.T) {
 			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.validator.On("ValidatePassword", "12345678").Return(nil)
+			s.crypt.On("Hash", "12345678").Return("hashed.password", nil)
 			s.repo.On("Insert", mock.AnythingOfType("*models.User")).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(events.ErrPublish)
 		},
@@ -213,6 +215,7 @@ func TestRegister(t *testing.T) {
 			s.repo.On("FindByEmail", "user@user.com").Return(nil, ErrRepositoryNotFound)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.validator.On("ValidatePassword", "12345678").Return(nil)
+			s.crypt.On("Hash", "12345678").Return("hashed.password", nil)
 			s.repo.On("Insert", mock.AnythingOfType("*models.User")).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
 		},
@@ -220,7 +223,7 @@ func TestRegister(t *testing.T) {
 		"valid admin",
 		genReq(func(req *RegisterRequest) {
 			req.Username = "admin"
-			req.Password = "123456789"
+			req.Password = "adminComplexPasswd#!"
 			req.Email = "admin@admin.com"
 			req.Name = "Admin"
 			req.Lastname = "Lastname"
@@ -230,7 +233,8 @@ func TestRegister(t *testing.T) {
 			s.repo.On("FindByUsername", "admin").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "admin@admin.com").Return(nil, ErrRepositoryNotFound)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
-			s.validator.On("ValidatePassword", "123456789").Return(nil)
+			s.validator.On("ValidatePassword", "adminComplexPasswd#!").Return(nil)
+			s.crypt.On("Hash", "adminComplexPasswd#!").Return("hashed.password", nil)
 			s.repo.On("Insert", mock.AnythingOfType("*models.User")).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
 		},
@@ -257,7 +261,7 @@ func TestRegister(t *testing.T) {
 					assert.NotEmpty(user.ID)
 					assert.Equal(test.req.Username, user.Username)
 					assert.NotEqual(test.req.Password, user.Password)
-					assert.True(user.ComparePassword(test.req.Password))
+					assert.Equal("hashed.password", user.Password)
 					assert.Equal(test.req.Email, user.Email)
 					assert.Equal(test.req.Name, user.Name)
 					assert.Equal(test.req.Lastname, user.Lastname)
@@ -462,6 +466,7 @@ func TestUpdate(t *testing.T) {
 			s.repo.On("FindByEmail", "new@email.com").Return(nil, ErrRepositoryNotFound)
 			s.validator.On("ValidateSchema", mock.AnythingOfType("*models.User")).Return(nil)
 			s.validator.On("ValidatePassword", "new-password").Return(nil)
+			s.crypt.On("Hash", "new-password").Return("hashed.password", nil)
 			s.repo.On("Update", mock.AnythingOfType("*models.User")).Return(nil)
 			s.events.On("Publish", mock.AnythingOfType("*users.UserEvent"), mock.AnythingOfType("*events.Options")).Return(nil)
 		},
@@ -499,6 +504,10 @@ func TestUpdate(t *testing.T) {
 				if assert.NotNil(user) {
 					assert.Equal(test.id, user.ID)
 					assert.NotEqual(mUser, user)
+					if test.req.Password != nil {
+						assert.NotEqual(*test.req.Password, user.Password)
+						assert.Equal("hashed.password", user.Password)
+					}
 				}
 				serv.validator.AssertCalled(t, "ValidateSchema", user)
 				serv.repo.AssertCalled(t, "Update", user)
@@ -646,6 +655,7 @@ func TestLogin(t *testing.T) {
 		ErrInvalidUser,
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(mUser, nil)
+			s.crypt.On("Compare", mUser.Password, "wrong-password").Return(false)
 		},
 	}, {
 		"login with username and password",
@@ -653,6 +663,7 @@ func TestLogin(t *testing.T) {
 		nil,
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(mUser, nil)
+			s.crypt.On("Compare", mUser.Password, "12345678").Return(true)
 			s.authServ.On("Create", mUser.ID).Return(mTokenStr, nil)
 			// s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
 		},
@@ -660,11 +671,13 @@ func TestLogin(t *testing.T) {
 		"login with email and password",
 		genReq(func(req *LoginRequest) {
 			*req.UsernameOrEmail = "user@user.com"
+			*req.Password = "complexPassword#!"
 		}),
 		nil,
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user@user.com").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
+			s.crypt.On("Compare", mUser.Password, "complexPassword#!").Return(true)
 			s.authServ.On("Create", mUser.ID).Return(mTokenStr, nil)
 			// s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
 		},
