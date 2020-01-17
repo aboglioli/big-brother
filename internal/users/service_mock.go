@@ -116,14 +116,6 @@ type mockService struct {
 	authServ  *mockAuthService
 }
 
-func (s *mockService) GetByID(id string) (*models.User, error) {
-	args := s.Called(id)
-	if u, ok := args.Get(0).(*models.User); ok {
-		return u, args.Error(1)
-	}
-	return nil, args.Error(1)
-}
-
 func newMockService() *mockService {
 	repo := &mockRepository{}
 	events := mocks.NewMockEventManager()

@@ -40,60 +40,60 @@ func TestGetByID(t *testing.T) {
 	}, {
 		"invalid id",
 		"123",
-		ErrNotFound,
-		func(s *mockService) {
-			s.repo.On("FindByID", "123").Return(nil, ErrRepositoryNotFound)
+		ErrNotFound.Wrap(ErrRepositoryNotFound),
+		func(m *mockService) {
+			m.repo.On("FindByID", "123").Return(nil, ErrRepositoryNotFound)
 		},
 	}, {
 		"invalid id",
 		"abc123",
-		ErrNotFound,
-		func(s *mockService) {
-			s.repo.On("FindByID", "abc123").Return(nil, ErrRepositoryNotFound)
+		ErrNotFound.Wrap(ErrRepositoryNotFound),
+		func(m *mockService) {
+			m.repo.On("FindByID", "abc123").Return(nil, ErrRepositoryNotFound)
 		},
 	}, {
 		"not found in db",
 		mUser.ID,
 		ErrNotFound.Wrap(ErrRepositoryNotFound),
-		func(s *mockService) {
-			s.repo.On("FindByID", mUser.ID).Return(nil, ErrRepositoryNotFound)
+		func(m *mockService) {
+			m.repo.On("FindByID", mUser.ID).Return(nil, ErrRepositoryNotFound)
 		},
 	}, {
 		"not validated",
 		mUser.ID,
 		ErrNotValidated,
-		func(s *mockService) {
+		func(m *mockService) {
 			u := mUser.Clone()
 			u.Validated = false
-			s.repo.On("FindByID", mUser.ID).Return(u, nil)
+			m.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
 	}, {
 		"not enabled",
 		mUser.ID,
 		ErrNotFound,
-		func(s *mockService) {
+		func(m *mockService) {
 			u := mUser.Clone()
 			u.Enabled = false
-			s.repo.On("FindByID", mUser.ID).Return(u, nil)
+			m.repo.On("FindByID", mUser.ID).Return(u, nil)
 		},
 	}, {
 		"existing user",
 		mUser.ID,
 		nil,
-		func(s *mockService) {
-			s.repo.On("FindByID", mUser.ID).Return(mUser, nil)
+		func(m *mockService) {
+			m.repo.On("FindByID", mUser.ID).Return(mUser, nil)
 		},
 	}}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
-			serv := newMockService()
+			m := newMockService()
 			if test.mock != nil {
-				test.mock(serv)
+				test.mock(m)
 			}
 
-			user, err := serv.service.GetByID(test.id)
+			user, err := m.service.GetByID(test.id)
 
 			if test.err != nil { // Error
 				if assert.NotNil(err) {
@@ -106,11 +106,11 @@ func TestGetByID(t *testing.T) {
 					assert.Equal(test.id, user.ID)
 				}
 			}
-			serv.crypt.AssertExpectations(t)
-			serv.repo.AssertExpectations(t)
-			serv.validator.AssertExpectations(t)
-			serv.events.AssertExpectations(t)
-			serv.authServ.AssertExpectations(t)
+			m.crypt.AssertExpectations(t)
+			m.repo.AssertExpectations(t)
+			m.validator.AssertExpectations(t)
+			m.events.AssertExpectations(t)
+			m.authServ.AssertExpectations(t)
 		})
 	}
 }
@@ -302,7 +302,7 @@ func TestUpdate(t *testing.T) {
 		err  error
 		mock func(s *mockService)
 	}{{
-		"GetByID",
+		"not existing user",
 		"abc123",
 		genReq(nil),
 		ErrNotFound,

@@ -19,7 +19,7 @@ const (
 
 type User struct {
 	Base
-	Username string `json:"username"validate:"required,min=4,max=32,alphanumdash"`
+	Username string `json:"username" validate:"required,min=4,max=32,alphanumdash"`
 	Password string `json:"password" validate:"required"`
 	Email    string `json:"email" validate:"required,min=5,max=64,email"`
 	Name     string `json:"name" validate:"required,min=2,max=32,alphaspaces"`
