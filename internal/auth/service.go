@@ -14,7 +14,7 @@ var (
 
 // Interfaces
 type Service interface {
-	Create(userID string) (*models.Token, error)
+	Create(userID string) (string, error)
 	Validate(tokenStr string) (*models.Token, error)
 	Invalidate(tokenStr string) (*models.Token, error)
 }
@@ -22,35 +22,47 @@ type Service interface {
 // Implementations
 type serviceImpl struct {
 	repo Repository
+	enc  Encoder
 }
 
 func NewService(repo Repository) Service {
+	enc := NewEncoder()
 	return &serviceImpl{
 		repo: repo,
+		enc:  enc,
 	}
 }
 
-func (s *serviceImpl) Create(userID string) (*models.Token, error) {
-	token := models.NewToken(userID)
-	if err := s.repo.Insert(token); err != nil {
-		return nil, ErrCreate.Wrap(err)
+func (s *serviceImpl) Create(userID string) (string, error) {
+	if userID == "" {
+		return "", ErrCreate
 	}
 
-	return token, nil
+	token := models.NewToken(userID)
+	tokenStr, err := s.enc.Encode(token.ID)
+	if tokenStr == "" || err != nil {
+		return "", ErrCreate.Wrap(err)
+	}
+
+	if err := s.repo.Insert(token); err != nil {
+		return "", ErrCreate.Wrap(err)
+	}
+
+	return tokenStr, nil
 }
 
 func (s *serviceImpl) Validate(tokenStr string) (*models.Token, error) {
-	token, err := models.DecodeToken(tokenStr)
-	if err != nil {
+	tokenID, err := s.enc.Decode(tokenStr)
+	if tokenID == "" || err != nil {
 		return nil, ErrValidate.Wrap(err)
 	}
 
-	t, err := s.repo.FindByID(token.ID)
-	if t == nil || err != nil {
+	token, err := s.repo.FindByID(tokenID)
+	if token == nil || err != nil {
 		return nil, ErrValidate.Wrap(err)
 	}
 
-	return t, nil
+	return token, nil
 }
 
 func (s *serviceImpl) Invalidate(tokenStr string) (*models.Token, error) {

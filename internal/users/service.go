@@ -27,7 +27,7 @@ type Service interface {
 	Update(id string, req *UpdateRequest) (*models.User, error)
 	Delete(id string) error
 
-	Login(req *LoginRequest) (*models.Token, error)
+	Login(req *LoginRequest) (string, error)
 	Logout(tokenStr string) error
 }
 
@@ -209,7 +209,7 @@ type LoginRequest struct {
 	Password        *string `json:"password"`
 }
 
-func (s *serviceImpl) Login(req *LoginRequest) (*models.Token, error) {
+func (s *serviceImpl) Login(req *LoginRequest) (string, error) {
 	vErr := ErrInvalidLogin
 	if req.UsernameOrEmail == nil {
 		vErr = vErr.F("username", "required")
@@ -218,7 +218,7 @@ func (s *serviceImpl) Login(req *LoginRequest) (*models.Token, error) {
 		vErr = vErr.F("password", "required")
 	}
 	if len(vErr.Fields) > 0 {
-		return nil, vErr
+		return "", vErr
 	}
 
 	user, err := s.repo.FindByUsername(*req.UsernameOrEmail)
@@ -227,19 +227,19 @@ func (s *serviceImpl) Login(req *LoginRequest) (*models.Token, error) {
 	}
 
 	if user == nil || err != nil {
-		return nil, ErrInvalidUser.Wrap(err)
+		return "", ErrInvalidUser.Wrap(err)
 	}
 
 	if !user.ComparePassword(*req.Password) {
-		return nil, ErrInvalidUser
+		return "", ErrInvalidUser
 	}
 
-	token, err := s.authServ.Create(user.ID.Hex())
+	tokenStr, err := s.authServ.Create(user.ID.Hex())
 	if err != nil {
-		return nil, ErrInvalidUser.Wrap(err)
+		return "", ErrInvalidUser.Wrap(err)
 	}
 
-	return token, nil
+	return tokenStr, nil
 }
 
 func (s *serviceImpl) Logout(tokenStr string) error {

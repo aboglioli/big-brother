@@ -10,7 +10,6 @@ import (
 	"github.com/aboglioli/big-brother/pkg/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func mockUser() *models.User {
@@ -596,7 +595,7 @@ func TestDelete(t *testing.T) {
 
 func TestLogin(t *testing.T) {
 	mUser := mockUser()
-	mToken := models.NewToken(mUser.ID.Hex())
+	mTokenStr := "encoded.token"
 
 	genReq := func(cb func(req *LoginRequest)) *LoginRequest {
 		req := &LoginRequest{
@@ -654,7 +653,7 @@ func TestLogin(t *testing.T) {
 		nil,
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user").Return(mUser, nil)
-			s.authServ.On("Create", mUser.ID.Hex()).Return(mToken, nil)
+			s.authServ.On("Create", mUser.ID.Hex()).Return(mTokenStr, nil)
 			// s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
 		},
 	}, {
@@ -666,7 +665,7 @@ func TestLogin(t *testing.T) {
 		func(s *mockService) {
 			s.repo.On("FindByUsername", "user@user.com").Return(nil, ErrRepositoryNotFound)
 			s.repo.On("FindByEmail", "user@user.com").Return(mUser, nil)
-			s.authServ.On("Create", mUser.ID.Hex()).Return(mToken, nil)
+			s.authServ.On("Create", mUser.ID.Hex()).Return(mTokenStr, nil)
 			// s.events.On("Publish", mock.Anything, mock.Anything).Return(nil)
 		},
 	}}
@@ -679,17 +678,17 @@ func TestLogin(t *testing.T) {
 				test.mock(serv)
 			}
 
-			token, err := serv.Login(test.req)
+			tokenStr, err := serv.Login(test.req)
 
 			if test.err != nil {
 				if assert.NotNil(err) {
 					errors.Assert(t, test.err, err)
 				}
-				assert.Nil(token)
+				assert.Empty(tokenStr)
 			} else {
 				assert.Nil(err)
-				if assert.NotNil(token) {
-					assert.Equal(mToken, token)
+				if assert.NotEmpty(tokenStr) {
+					assert.Equal(mTokenStr, tokenStr)
 				}
 			}
 			serv.repo.AssertExpectations(t)
@@ -702,8 +701,7 @@ func TestLogin(t *testing.T) {
 func TestLogout(t *testing.T) {
 	mUser := mockUser()
 	mToken := models.NewToken(mUser.ID.Hex())
-	mTokenStr, err := mToken.Encode()
-	require.Nil(t, err)
+	mTokenStr := "encoded.token"
 
 	tests := []struct {
 		name     string

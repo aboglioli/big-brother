@@ -1,9 +1,8 @@
-package users
+package models
 
 import (
 	"testing"
 
-	"github.com/aboglioli/big-brother/pkg/models"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,7 +22,7 @@ func TestUserSetPassword(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		user := models.NewUser()
+		user := NewUser()
 		user.SetPassword(test.pwd)
 		assert.NotEmpty(user.Password)
 		assert.Greater(len(user.Password), 10)

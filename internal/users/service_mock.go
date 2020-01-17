@@ -69,12 +69,9 @@ type mockAuthService struct {
 	mock.Mock
 }
 
-func (s *mockAuthService) Create(userID string) (*models.Token, error) {
+func (s *mockAuthService) Create(userID string) (string, error) {
 	args := s.Called(userID)
-	if token, ok := args.Get(0).(*models.Token); ok {
-		return token, args.Error(1)
-	}
-	return nil, args.Error(1)
+	return args.String(0), args.Error(1)
 }
 
 func (s *mockAuthService) Validate(tokenStr string) (*models.Token, error) {

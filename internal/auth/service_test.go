@@ -7,10 +7,11 @@ import (
 	"github.com/aboglioli/big-brother/pkg/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCreateToken(t *testing.T) {
+	mTokenStr := "encoded.token"
+
 	tests := []struct {
 		name   string
 		userID string
@@ -19,23 +20,23 @@ func TestCreateToken(t *testing.T) {
 	}{{
 		"empty userID",
 		"",
+		ErrCreate,
 		nil,
-		func(s *mockService) {
-			s.repo.On("Insert", mock.AnythingOfType("*models.Token")).Return(nil)
-		},
-	}, {
-		"user123",
-		"user123",
-		nil,
-		func(s *mockService) {
-			s.repo.On("Insert", mock.AnythingOfType("*models.Token")).Return(nil)
-		},
 	}, {
 		"repo error",
 		"user123",
 		ErrCreate.Wrap(ErrRepositoryInsert),
 		func(s *mockService) {
+			s.enc.On("Encode", mock.Anything).Return(mTokenStr, nil)
 			s.repo.On("Insert", mock.AnythingOfType("*models.Token")).Return(ErrRepositoryInsert)
+		},
+	}, {
+		"user123",
+		"user123",
+		nil,
+		func(s *mockService) {
+			s.enc.On("Encode", mock.Anything).Return(mTokenStr, nil)
+			s.repo.On("Insert", mock.AnythingOfType("*models.Token")).Return(nil)
 		},
 	}}
 
@@ -47,21 +48,23 @@ func TestCreateToken(t *testing.T) {
 				test.mock(serv)
 			}
 
-			token, err := serv.Create(test.userID)
+			tokenStr, err := serv.Create(test.userID)
 
 			if test.err != nil { // Error
 				if assert.NotNil(err) {
 					errors.Assert(t, test.err, err)
 				}
-				assert.Nil(token)
+				assert.Empty(tokenStr)
 			} else { // OK
 				assert.Nil(err)
-				if assert.NotNil(token) {
-					assert.NotEmpty(token.ID)
-					assert.Equal(test.userID, token.UserID)
+				if assert.NotEmpty(tokenStr) {
+					assert.Equal(mTokenStr, tokenStr)
 				}
-				serv.repo.AssertCalled(t, "Insert", token)
+				t, ok := serv.repo.Calls[0].Arguments[0].(*models.Token)
+				assert.True(ok)
+				assert.Equal(test.userID, t.UserID)
 			}
+			serv.enc.AssertExpectations(t)
 			serv.repo.AssertExpectations(t)
 		})
 	}
@@ -69,8 +72,7 @@ func TestCreateToken(t *testing.T) {
 
 func TestValidate(t *testing.T) {
 	mToken := models.NewToken("user123")
-	mTokenStr, err := mToken.Encode()
-	require.Nil(t, err)
+	mTokenStr := "encoded.token"
 
 	tests := []struct {
 		name     string
@@ -80,25 +82,31 @@ func TestValidate(t *testing.T) {
 	}{{
 		"empty tokenStr",
 		"",
-		ErrValidate.Wrap(models.ErrTokenDecode),
-		nil,
+		ErrValidate.Wrap(ErrTokenDecode),
+		func(s *mockService) {
+			s.enc.On("Decode", "").Return("", ErrTokenDecode)
+		},
 	}, {
 		"invalid token",
 		"eyJ.eyJj.fxg",
-		ErrValidate.Wrap(models.ErrTokenDecode),
-		nil,
+		ErrValidate.Wrap(ErrTokenDecode),
+		func(s *mockService) {
+			s.enc.On("Decode", "eyJ.eyJj.fxg").Return("", ErrTokenDecode)
+		},
 	}, {
 		"not saved and valid token",
 		mTokenStr,
 		ErrValidate.Wrap(ErrRepositoryNotFound),
 		func(s *mockService) {
-			s.repo.On("FindByID", mToken.ID).Return(nil, ErrRepositoryNotFound)
+			s.enc.On("Decode", mTokenStr).Return("token123", nil)
+			s.repo.On("FindByID", "token123").Return(nil, ErrRepositoryNotFound)
 		},
 	}, {
 		"valid token",
 		mTokenStr,
 		nil,
 		func(s *mockService) {
+			s.enc.On("Decode", mTokenStr).Return(mToken.ID, nil)
 			s.repo.On("FindByID", mToken.ID).Return(mToken, nil)
 		},
 	}}
@@ -125,6 +133,7 @@ func TestValidate(t *testing.T) {
 					assert.Equal(mToken.UserID, token.UserID)
 				}
 			}
+			serv.enc.AssertExpectations(t)
 			serv.repo.AssertExpectations(t)
 		})
 	}
@@ -132,8 +141,7 @@ func TestValidate(t *testing.T) {
 
 func TestInvalidate(t *testing.T) {
 	mToken := models.NewToken("user123")
-	mTokenStr, err := mToken.Encode()
-	require.Nil(t, err)
+	mTokenStr := "encoded.token"
 
 	tests := []struct {
 		name     string
@@ -143,18 +151,23 @@ func TestInvalidate(t *testing.T) {
 	}{{
 		"empty tokenStr",
 		"",
-		ErrInvalidate.Wrap(ErrValidate.Wrap(models.ErrTokenDecode)),
-		nil,
+		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrTokenDecode)),
+		func(s *mockService) {
+			s.enc.On("Decode", "").Return("", ErrTokenDecode)
+		},
 	}, {
 		"invalid tokenStr",
 		"asd.zxc.ey88",
-		ErrInvalidate.Wrap(ErrValidate.Wrap(models.ErrTokenDecode)),
-		nil,
+		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrTokenDecode)),
+		func(s *mockService) {
+			s.enc.On("Decode", "asd.zxc.ey88").Return("", ErrTokenDecode)
+		},
 	}, {
 		"not saved and valid tokenStr",
 		mTokenStr,
 		ErrInvalidate.Wrap(ErrValidate.Wrap(ErrRepositoryNotFound)),
 		func(s *mockService) {
+			s.enc.On("Decode", mTokenStr).Return(mToken.ID, nil)
 			s.repo.On("FindByID", mToken.ID).Return(nil, ErrRepositoryNotFound)
 		},
 	}, {
@@ -162,6 +175,7 @@ func TestInvalidate(t *testing.T) {
 		mTokenStr,
 		ErrInvalidate.Wrap(ErrRepositoryDelete),
 		func(s *mockService) {
+			s.enc.On("Decode", mTokenStr).Return(mToken.ID, nil)
 			s.repo.On("FindByID", mToken.ID).Return(mToken, nil)
 			s.repo.On("Delete", mToken.ID).Return(ErrRepositoryDelete)
 		},
@@ -170,6 +184,7 @@ func TestInvalidate(t *testing.T) {
 		mTokenStr,
 		nil,
 		func(s *mockService) {
+			s.enc.On("Decode", mTokenStr).Return(mToken.ID, nil)
 			s.repo.On("FindByID", mToken.ID).Return(mToken, nil)
 			s.repo.On("Delete", mToken.ID).Return(nil)
 		},
@@ -197,6 +212,7 @@ func TestInvalidate(t *testing.T) {
 					assert.Equal(mToken.UserID, token.UserID)
 				}
 			}
+			serv.enc.AssertExpectations(t)
 			serv.repo.AssertExpectations(t)
 		})
 	}
