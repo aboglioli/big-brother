@@ -29,13 +29,15 @@ type Queue interface {
 }
 
 type queue struct {
+	workers int
 	tasks   chan *task
 	retries int
 	sleep   time.Duration
 }
 
-func NewQueue(retries int, sleepBetweenCalls time.Duration) Queue {
+func NewQueue(workers int, retries int, sleepBetweenCalls time.Duration) Queue {
 	return &queue{
+		workers: workers,
 		tasks:   make(chan *task, 16),
 		retries: retries,
 		sleep:   sleepBetweenCalls,
@@ -57,13 +59,19 @@ func (q *queue) Do(fn func() error) Task {
 }
 
 func (q *queue) Run() {
-	for task := range q.tasks {
-		go q.runTask(task)
+	for i := 0; i < q.workers; i++ {
+		go q.worker()
 	}
 }
 
 func (q *queue) Finish() {
 	close(q.tasks)
+}
+
+func (q *queue) worker() {
+	for t := range q.tasks {
+		q.runTask(t)
+	}
 }
 
 func (q *queue) runTask(t *task) {

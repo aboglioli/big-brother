@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(32),
     lastname VARCHAR(32),
     role VARCHAR(32) NOT NULL,
+    enabled BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP NOT NULL,
     updated_at TIMESTAMP,
     deleted_at TIMESTAMP
@@ -47,9 +48,13 @@ CREATE TABLE IF NOT EXISTS roles (
 );
 
 CREATE TABLE IF NOT EXISTS employees (
+    id UUID PRIMARY KEY,
     user_id UUID,
     organization_id UUID,
     role_id UUID,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP,
+    deleted_at TIMESTAMP,
     PRIMARY KEY (user_id, organization_id),
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (organization_id) REFERENCES organizations(id),
@@ -59,7 +64,10 @@ CREATE TABLE IF NOT EXISTS employees (
 CREATE TABLE IF NOT EXISTS permissions (
     module_slug VARCHAR(32),
     role_id  UUID,
-    permission VARCHAR(10),
+    create BOOLEAN DEFAULT FALSE,
+    read BOOLEAN DEFAULT FALSE,
+    update BOOLEAN DEFAULT FALSE,
+    delete BOOLEAN DEFAULT FALSE,
     PRIMARY KEY (module_slug, role_id),
     FOREIGN KEY (module_slug) REFERENCES modules(slug),
     FOREIGN KEY (role_id) REFERENCES roles(id)

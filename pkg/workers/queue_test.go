@@ -12,6 +12,7 @@ func TestDo(t *testing.T) {
 	assert := assert.New(t)
 
 	queue := &queue{
+		workers: 4,
 		tasks:   make(chan *task),
 		retries: 10,
 		sleep:   3 * time.Millisecond,
@@ -19,7 +20,7 @@ func TestDo(t *testing.T) {
 	defer func() {
 		queue.Finish()
 	}()
-	go queue.Run()
+	queue.Run()
 
 	t1 := queue.Do(func() error {
 		return errors.New("error1")

@@ -1,10 +1,13 @@
 package models
 
-type Permission string
+type CRUD struct {
+	Create bool `json:"create"`
+	Read   bool `json:"read"`
+	Update bool `json:"update"`
+	Delete bool `json:"delete"`
+}
 
-const (
-	CREATE = Permission("c")
-	READ   = Permission("r")
-	UPDATE = Permission("u")
-	DELETE = Permission("d")
-)
+type Permission struct {
+	Module Module `json:"module"`
+	CRUD   CRUD   `json:"crud"`
+}
