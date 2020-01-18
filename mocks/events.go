@@ -13,13 +13,13 @@ func NewMockEventManager() *MockEventManager {
 	return &MockEventManager{}
 }
 
-func (m *MockEventManager) Publish(body interface{}, opts *events.Options) error {
-	args := m.Called(body, opts)
+func (m *MockEventManager) Publish(body interface{}, topic, route string) error {
+	args := m.Called(body, topic, route)
 	return args.Error(0)
 }
 
-func (m *MockEventManager) Consume(opts *events.Options) (<-chan events.Message, error) {
-	args := m.Called(opts)
+func (m *MockEventManager) Consume(topic, route, queue string) (<-chan events.Message, error) {
+	args := m.Called(topic, route, queue)
 	msg, ok := args.Get(0).(<-chan events.Message)
 	if !ok {
 		return nil, args.Error(1)

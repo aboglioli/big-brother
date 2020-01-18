@@ -46,7 +46,7 @@ type rabbitMQ struct {
 	conn *amqp.Connection
 }
 
-func NewRabbitMQ() (Manager, error) {
+func NewRabbitMQ() (Bus, error) {
 	config := config.Get()
 	conn, err := amqp.Dial(config.RabbitURL)
 	if err != nil {
@@ -58,7 +58,7 @@ func NewRabbitMQ() (Manager, error) {
 	}, nil
 }
 
-func (r *rabbitMQ) Publish(body interface{}, opts *Options) error {
+func (r *rabbitMQ) Publish(body interface{}, topic, route string) error {
 	ch, err := r.conn.Channel()
 	if err != nil {
 		return ErrCreateChannel.M("failed to create channel").Wrap(err)
@@ -66,7 +66,7 @@ func (r *rabbitMQ) Publish(body interface{}, opts *Options) error {
 	defer ch.Close()
 
 	err = ch.ExchangeDeclare(
-		opts.Exchange,
+		topic,
 		"topic",
 		true,
 		false,
@@ -75,7 +75,7 @@ func (r *rabbitMQ) Publish(body interface{}, opts *Options) error {
 		nil,
 	)
 	if err != nil {
-		return ErrDeclareExchange.M("failed to declare exchange %s", opts.Exchange).C("exchange", opts.Exchange).Wrap(err)
+		return ErrDeclareExchange.M("failed to declare exchange %s", topic).C("exchange", topic).Wrap(err)
 	}
 
 	b, err := json.Marshal(body)
@@ -84,8 +84,8 @@ func (r *rabbitMQ) Publish(body interface{}, opts *Options) error {
 	}
 
 	err = ch.Publish(
-		opts.Exchange,
-		opts.Route,
+		topic,
+		route,
 		false,
 		false,
 		amqp.Publishing{
@@ -99,14 +99,14 @@ func (r *rabbitMQ) Publish(body interface{}, opts *Options) error {
 	return nil
 }
 
-func (r *rabbitMQ) Consume(opts *Options) (<-chan Message, error) {
+func (r *rabbitMQ) Consume(topic, route, queue string) (<-chan Message, error) {
 	ch, err := r.conn.Channel()
 	if err != nil {
 		return nil, ErrCreateChannel.M("failed to create channel").Wrap(err)
 	}
 
 	err = ch.ExchangeDeclare(
-		opts.Exchange,
+		topic,
 		"topic",
 		true,
 		false,
@@ -115,16 +115,16 @@ func (r *rabbitMQ) Consume(opts *Options) (<-chan Message, error) {
 		nil,
 	)
 	if err != nil {
-		return nil, ErrDeclareExchange.M("failed to declare exchange %s", opts.Exchange).C("exchange", opts.Exchange).Wrap(err)
+		return nil, ErrDeclareExchange.M("failed to declare exchange %s", topic).C("exchange", topic).Wrap(err)
 	}
 
 	exclusive := true
-	if opts.Queue != "" {
+	if queue != "" {
 		exclusive = false
 	}
 
 	q, err := ch.QueueDeclare(
-		opts.Queue,
+		queue,
 		false,
 		false,
 		exclusive,
@@ -132,13 +132,13 @@ func (r *rabbitMQ) Consume(opts *Options) (<-chan Message, error) {
 		nil,
 	)
 	if err != nil {
-		return nil, ErrDeclareQueue.M("failed to declare queue %s", opts.Queue).C("queue", opts.Queue).Wrap(err)
+		return nil, ErrDeclareQueue.M("failed to declare queue %s", queue).C("queue", queue).Wrap(err)
 	}
 
 	err = ch.QueueBind(
 		q.Name,
-		opts.Route,
-		opts.Exchange,
+		route,
+		topic,
 		false,
 		nil,
 	)

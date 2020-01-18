@@ -51,9 +51,7 @@ func TestCreateToken(t *testing.T) {
 			tokenStr, err := serv.Create(test.userID)
 
 			if test.err != nil { // Error
-				if assert.NotNil(err) {
-					errors.Assert(t, test.err, err)
-				}
+				errors.Assert(t, test.err, err)
 				assert.Empty(tokenStr)
 			} else { // OK
 				assert.Nil(err)
@@ -122,9 +120,7 @@ func TestValidate(t *testing.T) {
 			token, err := serv.Validate(test.tokenStr)
 
 			if test.err != nil { // Error
-				if assert.NotNil(err) {
-					errors.Assert(t, test.err, err)
-				}
+				errors.Assert(t, test.err, err)
 				assert.Nil(token)
 			} else { // OK
 				assert.Nil(err)
@@ -201,9 +197,7 @@ func TestInvalidate(t *testing.T) {
 			token, err := serv.Invalidate(test.tokenStr)
 
 			if test.err != nil { // Error
-				if assert.NotNil(err) {
-					errors.Assert(t, test.err, err)
-				}
+				errors.Assert(t, test.err, err)
 				assert.Nil(token)
 			} else { // OK
 				assert.Nil(err)

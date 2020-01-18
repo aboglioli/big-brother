@@ -29,13 +29,13 @@ type Service interface {
 // Implementations
 type service struct {
 	repo      Repository
-	events    events.Manager
+	events    events.Bus
 	validator Validator
 	crypt     PasswordCrypt
 	authServ  auth.Service
 }
 
-func NewService(repo Repository, events events.Manager, authServ auth.Service) Service {
+func NewService(repo Repository, events events.Bus, authServ auth.Service) Service {
 	return &service{
 		repo:      repo,
 		events:    events,
