@@ -15,16 +15,16 @@ type Queue interface {
 }
 
 type queue struct {
-	tasks      chan *Task
-	retries    int
-	waitForErr time.Duration
+	tasks   chan *Task
+	retries int
+	sleep   time.Duration
 }
 
 func NewQueue() Queue {
 	return &queue{
-		tasks:      make(chan *Task, 16),
-		retries:    3,
-		waitForErr: 3 * time.Second,
+		tasks:   make(chan *Task, 16),
+		retries: 3,
+		sleep:   500 * time.Millisecond,
 	}
 }
 
@@ -51,6 +51,10 @@ func (q *queue) Finish() {
 }
 
 func (q *queue) runTask(task *Task) {
+	defer func() {
+		close(task.Err)
+	}()
+
 	for i := 0; i < q.retries; i++ {
 		err := task.Fn()
 		if err == nil {
@@ -59,7 +63,9 @@ func (q *queue) runTask(task *Task) {
 
 		select {
 		case task.Err <- err:
-		case <-time.After(q.waitForErr):
+			time.Sleep(q.sleep)
+		case <-time.After(q.sleep):
 		}
+
 	}
 }
