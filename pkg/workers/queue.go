@@ -2,42 +2,58 @@ package workers
 
 import "time"
 
-type Task struct {
-	Fn  func() error
-	Err chan error
+type Task interface {
+	Done() <-chan bool
+	Err() <-chan error
+}
+
+type task struct {
+	fn   func() error
+	done chan bool
+	err  chan error
+}
+
+func (t *task) Done() <-chan bool {
+	return t.done
+}
+
+func (t *task) Err() <-chan error {
+	return t.err
 }
 
 // Interface
 type Queue interface {
-	Do(fn func() error) <-chan error
+	Do(fn func() error) Task
 	Run()
 	Finish()
 }
 
 type queue struct {
-	tasks   chan *Task
+	tasks   chan *task
 	retries int
 	sleep   time.Duration
 }
 
-func NewQueue() Queue {
+func NewQueue(retries int, sleepBetweenCalls time.Duration) Queue {
 	return &queue{
-		tasks:   make(chan *Task, 16),
-		retries: 3,
-		sleep:   500 * time.Millisecond,
+		tasks:   make(chan *task, 16),
+		retries: retries,
+		sleep:   sleepBetweenCalls,
 	}
 }
 
-func (q *queue) Do(fn func() error) <-chan error {
-	chErr := make(chan error)
+func (q *queue) Do(fn func() error) Task {
+	task := &task{
+		fn:   fn,
+		done: make(chan bool),
+		err:  make(chan error),
+	}
+
 	go func() {
-		task := &Task{
-			Fn:  fn,
-			Err: chErr,
-		}
 		q.tasks <- task
 	}()
-	return chErr
+
+	return task
 }
 
 func (q *queue) Run() {
@@ -50,22 +66,31 @@ func (q *queue) Finish() {
 	close(q.tasks)
 }
 
-func (q *queue) runTask(task *Task) {
+func (q *queue) runTask(t *task) {
 	defer func() {
-		close(task.Err)
+		close(t.done)
+		close(t.err)
 	}()
 
 	for i := 0; i < q.retries; i++ {
-		err := task.Fn()
+		err := t.fn()
 		if err == nil {
+			select {
+			case t.done <- true:
+			default:
+			}
 			return
 		}
 
 		select {
-		case task.Err <- err:
+		case t.err <- err:
 			time.Sleep(q.sleep)
 		case <-time.After(q.sleep):
 		}
+	}
 
+	select {
+	case t.done <- false:
+	default:
 	}
 }

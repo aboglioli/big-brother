@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type Data struct {
+type data struct {
 	Value string `json:"value"`
 }
 
@@ -53,14 +53,14 @@ func TestRedis(t *testing.T) {
 	})
 
 	t.Run("save struct", func(t *testing.T) {
-		data := &Data{"hello"}
+		mD := &data{"hello"}
 
 		// Set struct
-		err = r.Set("key", data, 0)
+		err = r.Set("key", mD, 0)
 		assert.NotNil(err)
 
 		// Set marshalled struct
-		b, err := json.Marshal(data)
+		b, err := json.Marshal(mD)
 		require.Nil(t, err)
 		require.NotEmpty(t, b)
 
@@ -73,11 +73,11 @@ func TestRedis(t *testing.T) {
 			s, ok := v.(string)
 			assert.True(ok)
 
-			d := &Data{}
+			d := &data{}
 			err := json.Unmarshal([]byte(s), d)
 			assert.Nil(err)
 
-			assert.Equal(data, d)
+			assert.Equal(mD, d)
 		}
 
 		err = r.Delete("data123")

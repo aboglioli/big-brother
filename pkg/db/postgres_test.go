@@ -70,6 +70,16 @@ func TestPostgres(t *testing.T) {
 		assert.Equal(person{"Alan", 21, nil}, people[0])
 		assert.Equal(person{"Boglioli", 23, utils.NewString("Caffe")}, people[1])
 
+		row := db.QueryRow("SELECT * FROM test_table WHERE lastname = $1 and age > $2", "Caffe", 20)
+		var p person
+		err = row.Scan(&p.name, &p.age, &p.lastname)
+		assert.Nil(err)
+		assert.Equal(person{"Boglioli", 23, utils.NewString("Caffe")}, p)
+
+		row = db.QueryRow("SELECT * FROM test_table WHERE lastname = $1 and age < $2", "Caffe", 20)
+		err = row.Scan(&p.name, &p.age, &p.lastname)
+		assert.NotNil(err)
+
 		_, err = db.Exec("DROP TABLE test_table")
 		assert.Nil(err)
 	}

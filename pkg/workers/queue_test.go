@@ -3,6 +3,7 @@ package workers
 import (
 	"errors"
 	"github.com/stretchr/testify/assert"
+	"sync"
 	"testing"
 	"time"
 )
@@ -11,33 +12,52 @@ func TestDo(t *testing.T) {
 	assert := assert.New(t)
 
 	queue := &queue{
-		tasks:   make(chan *Task),
-		retries: 3,
-		sleep:   10 * time.Millisecond,
+		tasks:   make(chan *task),
+		retries: 10,
+		sleep:   3 * time.Millisecond,
 	}
 	defer func() {
 		queue.Finish()
 	}()
 	go queue.Run()
 
-	chErr1 := queue.Do(func() error {
+	t1 := queue.Do(func() error {
 		return errors.New("error1")
 	})
-	chErr2 := queue.Do(func() error {
+	t2 := queue.Do(func() error {
 		return errors.New("error2")
 	})
 
-	c2 := 0
-	for err2 := range chErr2 {
-		c2++
-		assert.Equal(errors.New("error2"), err2)
-	}
-	assert.Equal(3, c2)
+	var wg sync.WaitGroup
+	wg.Add(3)
 
-	c1 := 0
-	for err1 := range chErr1 {
-		c1++
-		assert.Equal(errors.New("error1"), err1)
-	}
-	assert.Equal(0, c1)
+	go func() {
+		c2 := 0
+		for err2 := range t2.Err() {
+			c2++
+			assert.Equal(errors.New("error2"), err2)
+		}
+		assert.Equal(10, c2)
+		wg.Done()
+	}()
+
+	go func() {
+		c1 := 0
+		for err1 := range t1.Err() {
+			c1++
+			assert.Equal(errors.New("error1"), err1)
+		}
+		assert.Equal(10, c1)
+		wg.Done()
+	}()
+
+	go func() {
+		d1 := <-t1.Done()
+		d2 := <-t2.Done()
+		assert.False(d1)
+		assert.False(d2)
+		wg.Done()
+	}()
+
+	wg.Wait()
 }
