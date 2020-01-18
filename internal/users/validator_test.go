@@ -5,8 +5,61 @@ import (
 
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/aboglioli/big-brother/pkg/models"
+	"github.com/aboglioli/big-brother/pkg/utils"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestValidateStatus(t *testing.T) {
+	tests := []struct {
+		name string
+		user func(u *models.User) *models.User
+		err  error
+	}{{
+		"nil user",
+		func(u *models.User) *models.User {
+			return nil
+		},
+		errors.ErrNotFound,
+	}, {
+		"not enabled user",
+		func(u *models.User) *models.User {
+			u.Validated = true
+			u.Enabled = false
+			return u
+		},
+		errors.ErrNotFound,
+	}, {
+		"not validated user",
+		func(u *models.User) *models.User {
+			u.Validated = false
+			u.Enabled = true
+			return u
+		},
+		ErrUserNotValidated,
+	}, {
+		"enabled and validated user",
+		func(u *models.User) *models.User {
+			u.Validated = true
+			u.Enabled = true
+			return u
+		},
+		nil,
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			mUser := models.NewUser()
+			if test.user != nil {
+				mUser = test.user(mUser)
+			}
+			validator := NewValidator()
+
+			err := validator.Status(mUser)
+
+			errors.Assert(t, test.err, err)
+		})
+	}
+}
 
 func TestValidateSchema(t *testing.T) {
 	tests := []struct {
@@ -165,5 +218,216 @@ func TestValidatePassword(t *testing.T) {
 				assert.Nil(err)
 			}
 		})
+	}
+}
+
+func TestValidateRegisterRequest(t *testing.T) {
+	tests := []struct {
+		name string
+		req  *RegisterRequest
+		err  error
+	}{{
+		"nil request",
+		nil,
+		errors.ErrRequest,
+	}, {
+		"empty request",
+		&RegisterRequest{},
+		errors.ErrRequest,
+	}, {
+		"empty name and lastname",
+		&RegisterRequest{
+			Username: "username",
+			Password: "12345678",
+			Email:    "user@user.com",
+		},
+		errors.ErrRequest.F("name", "required").F("lastname", "required"),
+	}, {
+		"invalid email",
+		&RegisterRequest{
+			Username: "username",
+			Password: "12345678",
+			Email:    "á@-a.c",
+			Name:     "Name",
+			Lastname: "Lastname",
+		},
+		errors.ErrRequest.F("email", "email"),
+	}, {
+		"empty password",
+		&RegisterRequest{
+			Username: "username",
+			Password: "",
+			Email:    "user@user.com",
+			Name:     "Name",
+			Lastname: "Lastname",
+		},
+		errors.ErrRequest.F("password", "required"),
+	}, {
+		"valid",
+		&RegisterRequest{
+			Username: "username",
+			Password: "12345678",
+			Email:    "user@user.com",
+			Name:     "Name",
+			Lastname: "Lastname",
+		},
+		nil,
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			validator := NewValidator()
+
+			err := validator.RegisterRequest(test.req)
+
+			errors.Assert(t, test.err, err)
+		})
+	}
+}
+
+func TestValidateUpdateRequest(t *testing.T) {
+	tests := []struct {
+		name string
+		req  *UpdateRequest
+		err  error
+	}{{
+		"nil request",
+		nil,
+		errors.ErrRequest,
+	}, {
+		"empty request",
+		&UpdateRequest{
+			Username: utils.NewString(""),
+			Email:    utils.NewString(""),
+			Name:     utils.NewString(""),
+			Lastname: utils.NewString(""),
+		},
+		errors.ErrRequest,
+	}, {
+		"empty name and lastname",
+		&UpdateRequest{
+			Name:     utils.NewString(""),
+			Lastname: utils.NewString(""),
+		},
+		errors.ErrRequest,
+	}, {
+		"empty username",
+		&UpdateRequest{
+			Username: utils.NewString(""),
+		},
+		errors.ErrRequest,
+	}, {
+		"invalid email",
+		&UpdateRequest{
+			Email: utils.NewString("à@a-.b"),
+		},
+		errors.ErrRequest,
+	}, {
+		"valid",
+		&UpdateRequest{
+			Username: utils.NewString("username"),
+			Email:    utils.NewString("user@user.com"),
+			Name:     utils.NewString("Name"),
+			Lastname: utils.NewString("Lastname"),
+		},
+		nil,
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			validator := NewValidator()
+
+			err := validator.UpdateRequest(test.req)
+
+			errors.Assert(t, test.err, err)
+		})
+	}
+}
+
+func TestChangePasswordRequest(t *testing.T) {
+	tests := []struct {
+		name string
+		req  *ChangePasswordRequest
+		err  error
+	}{{
+		"nil request",
+		nil,
+		errors.ErrRequest,
+	}, {
+		"empty request",
+		&ChangePasswordRequest{},
+		errors.ErrRequest,
+	}, {
+		"only current password",
+		&ChangePasswordRequest{
+			CurrentPassword: "1234",
+		},
+		errors.ErrRequest,
+	}, {
+		"only new password",
+		&ChangePasswordRequest{
+			NewPassword: "abcd",
+		},
+		errors.ErrRequest,
+	}, {
+		"valid",
+		&ChangePasswordRequest{
+			CurrentPassword: "1234",
+			NewPassword:     "abcd",
+		},
+		nil,
+	}}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			validator := NewValidator()
+
+			err := validator.ChangePasswordRequest(test.req)
+
+			errors.Assert(t, test.err, err)
+		})
+	}
+}
+
+func TestValidateLoginRequest(t *testing.T) {
+	tests := []struct {
+		name string
+		req  *LoginRequest
+		err  error
+	}{{
+		"nil request",
+		nil,
+		errors.ErrRequest,
+	}, {
+		"empty request",
+		&LoginRequest{},
+		errors.ErrRequest,
+	}, {
+		"only username",
+		&LoginRequest{
+			UsernameOrEmail: "username",
+		},
+		errors.ErrRequest,
+	}, {
+		"only password",
+		&LoginRequest{
+			Password: "1234",
+		},
+		errors.ErrRequest,
+	}, {
+		"valid",
+		&LoginRequest{
+			UsernameOrEmail: "username",
+			Password:        "1234",
+		},
+		nil,
+	}}
+
+	for _, test := range tests {
+		validator := NewValidator()
+
+		err := validator.LoginRequest(test.req)
+
+		errors.Assert(t, test.err, err)
 	}
 }

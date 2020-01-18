@@ -525,7 +525,6 @@ func TestChangePassword(t *testing.T) {
 			u := mUser.Clone()
 			m.repo.On("FindByID", mUser.ID).Return(u, nil)
 			m.validator.On("Status", u).Return(nil)
-			m.validator.On("ChangePasswordRequest", req).Return(nil)
 			m.validator.On("Password", req.NewPassword).Return(ErrPasswordValidation)
 		},
 	}, {

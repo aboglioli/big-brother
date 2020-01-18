@@ -118,7 +118,7 @@ func (s *service) Register(req *RegisterRequest) (*models.User, error) {
 
 type UpdateRequest struct {
 	Username *string `json:"username"`
-	Email    *string `json:"email"`
+	Email    *string `json:"email" validate:"email"`
 	Name     *string `json:"name"`
 	Lastname *string `json:"lastname"`
 }

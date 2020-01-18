@@ -107,11 +107,29 @@ func (v *validator) RegisterRequest(req *RegisterRequest) error {
 }
 
 func (v *validator) UpdateRequest(req *UpdateRequest) error {
-	if req.Username == nil &&
-		req.Email == nil &&
-		req.Name == nil &&
-		req.Lastname == nil {
+	if req == nil ||
+		(req.Username == nil &&
+			req.Email == nil &&
+			req.Name == nil &&
+			req.Lastname == nil) {
 		return errors.ErrRequest.M("empty request")
+	}
+
+	err := errors.ErrRequest
+	if req.Username != nil && *req.Username == "" {
+		err = err.F("username", "empty")
+	}
+	if req.Email != nil && *req.Email == "" {
+		err = err.F("email", "empty")
+	}
+	if req.Name != nil && *req.Name == "" {
+		err = err.F("name", "empty")
+	}
+	if req.Lastname != nil && *req.Lastname == "" {
+		err = err.F("lastname", "empty")
+	}
+	if len(err.Fields) > 0 {
+		return err
 	}
 
 	return v.checkFields(req)
