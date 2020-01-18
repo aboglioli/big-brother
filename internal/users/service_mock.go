@@ -11,13 +11,38 @@ type mockValidator struct {
 	mock.Mock
 }
 
-func (m *mockValidator) ValidateSchema(u *models.User) error {
+func (m *mockValidator) Status(u *models.User) error {
 	args := m.Called(u)
 	return args.Error(0)
 }
 
-func (m *mockValidator) ValidatePassword(pwd string) error {
+func (m *mockValidator) Schema(u *models.User) error {
+	args := m.Called(u)
+	return args.Error(0)
+}
+
+func (m *mockValidator) Password(pwd string) error {
 	args := m.Called(pwd)
+	return args.Error(0)
+}
+
+func (m *mockValidator) RegisterRequest(req *RegisterRequest) error {
+	args := m.Called(req)
+	return args.Error(0)
+}
+
+func (m *mockValidator) UpdateRequest(req *UpdateRequest) error {
+	args := m.Called(req)
+	return args.Error(0)
+}
+
+func (m *mockValidator) ChangePasswordRequest(req *ChangePasswordRequest) error {
+	args := m.Called(req)
+	return args.Error(0)
+}
+
+func (m *mockValidator) LoginRequest(req *LoginRequest) error {
+	args := m.Called(req)
 	return args.Error(0)
 }
 

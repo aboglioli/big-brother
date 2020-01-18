@@ -1,6 +1,7 @@
 package users
 
 import (
+	"net/http"
 	"regexp"
 
 	"github.com/aboglioli/big-brother/pkg/errors"
@@ -11,14 +12,20 @@ import (
 
 // Errors
 var (
+	ErrUserNotValidated   = errors.Status.New("user.not_validated").S(http.StatusNotFound)
 	ErrSchemaValidation   = errors.Validation.New("user.invalid_schema")
 	ErrPasswordValidation = errors.Validation.New("user.invalid_password")
 )
 
 // Interfaces
 type Validator interface {
-	ValidateSchema(u *models.User) error
-	ValidatePassword(pwd string) error
+	Status(u *models.User) error
+	Schema(u *models.User) error
+	Password(pwd string) error
+	RegisterRequest(req *RegisterRequest) error
+	UpdateRequest(req *UpdateRequest) error
+	ChangePasswordRequest(req *ChangePasswordRequest) error
+	LoginRequest(req *LoginRequest) error
 }
 
 // Implementations
@@ -56,29 +63,79 @@ func NewValidator() Validator {
 	}
 }
 
-func (v *validator) ValidateSchema(u *models.User) error {
-	if err := v.validate.Struct(u); err != nil {
-		if errs, ok := err.(govalidator.ValidationErrors); ok {
-			vErr := ErrSchemaValidation
-			for _, err := range errs {
-				field := strcase.ToLowerCamel(err.Field())
-				vErr = vErr.F(field, "invalid", err.Tag())
-			}
-			return vErr
-		}
+func (v *validator) Status(u *models.User) error {
+	if u == nil {
+		return errors.ErrNotFound
+	}
+	if !u.Enabled {
+		return errors.ErrNotFound
+	}
+	if !u.Validated {
+		return ErrUserNotValidated
+	}
+	return nil
+}
 
-		return ErrSchemaValidation
+func (v *validator) Schema(u *models.User) error {
+	if err := v.validate.Struct(u); err != nil {
+		valErr := ErrSchemaValidation
+		if errs, ok := err.(govalidator.ValidationErrors); ok {
+			for _, err := range errs {
+				field := strcase.ToSnake(err.Field())
+				valErr = valErr.F(field, err.Tag())
+			}
+			return valErr
+		}
+		return valErr
+	}
+	return nil
+}
+
+func (v *validator) Password(pwd string) error {
+	if len(pwd) < 8 {
+		return ErrPasswordValidation.F("password", "too_weak")
+	}
+	if len(pwd) > 64 {
+		return ErrPasswordValidation.F("password", "too_long")
 	}
 
 	return nil
 }
 
-func (v *validator) ValidatePassword(pwd string) error {
-	if len(pwd) < 8 {
-		return ErrPasswordValidation.F("password", "too_weak")
+func (v *validator) RegisterRequest(req *RegisterRequest) error {
+	return v.checkFields(req)
+}
+
+func (v *validator) UpdateRequest(req *UpdateRequest) error {
+	if req.Username == nil &&
+		req.Email == nil &&
+		req.Name == nil &&
+		req.Lastname == nil {
+		return errors.ErrRequest.M("empty request")
 	}
-	if len(pwd) > 64 {
-		return ErrPasswordValidation.F("password", "invalid_length")
+
+	return v.checkFields(req)
+}
+
+func (v *validator) ChangePasswordRequest(req *ChangePasswordRequest) error {
+	return v.checkFields(req)
+}
+
+func (v *validator) LoginRequest(req *LoginRequest) error {
+	return v.checkFields(req)
+}
+
+func (v *validator) checkFields(s interface{}) error {
+	if err := v.validate.Struct(s); err != nil {
+		reqErr := errors.ErrRequest
+		if errs, ok := err.(govalidator.ValidationErrors); ok {
+			for _, err := range errs {
+				field := strcase.ToSnake(err.Field())
+				reqErr = reqErr.F(field, err.Tag())
+			}
+			return reqErr
+		}
+		return reqErr
 	}
 
 	return nil

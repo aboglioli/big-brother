@@ -111,7 +111,7 @@ func TestValidateSchema(t *testing.T) {
 				test.mock(user)
 			}
 			validator := NewValidator()
-			err := validator.ValidateSchema(user)
+			err := validator.Schema(user)
 
 			if test.err != nil { // Error
 				if assert.NotNil(err) {
@@ -155,7 +155,7 @@ func TestValidatePassword(t *testing.T) {
 		t.Run(test.pwd, func(t *testing.T) {
 			assert := assert.New(t)
 			validator := NewValidator()
-			err := validator.ValidatePassword(test.pwd)
+			err := validator.Password(test.pwd)
 
 			if test.err != nil { // Error
 				if assert.NotNil(err) {

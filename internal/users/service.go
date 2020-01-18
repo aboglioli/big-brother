@@ -9,16 +9,8 @@ import (
 
 // Errors
 var (
-	ErrInvalidID      = errors.Status.New("user.service.invalid_id")
-	ErrNotFound       = errors.Status.New("user.service.not_found").S(404)
-	ErrNotValidated   = errors.Status.New("user.service.not_validated")
-	ErrRegister       = errors.Status.New("user.service.register")
-	ErrNotAvailable   = errors.Validation.New("user.not_available")
-	ErrUpdate         = errors.Status.New("user.service.update")
-	ErrChangePassword = errors.Status.New("user.service.change_password")
-	ErrDelete         = errors.Status.New("user.service.delete")
-	ErrInvalidUser    = errors.Status.New("user.service.invalid_user")
-	ErrInvalidLogin   = errors.Validation.New("user.service.invalid_login")
+	ErrUserNotAvailable = errors.Status.New("user.not_available")
+	ErrInvalidUser      = errors.Status.New("user.invalid_user")
 )
 
 // Interfaces
@@ -58,19 +50,22 @@ func (s *service) GetByID(id string) (*models.User, error) {
 }
 
 type RegisterRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-	Email    string `json:"email"`
-	Name     string `json:"name"`
-	Lastname string `json:"lastname"`
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
+	Name     string `json:"name" validate:"required"`
+	Lastname string `json:"lastname" validate:"required"`
 }
 
 func (s *service) Register(req *RegisterRequest) (*models.User, error) {
-	errs := make(errors.Errors, 0)
+	// Request
+	if err := s.validator.RegisterRequest(req); err != nil {
+		return nil, err
+	}
 
 	// Password strength
-	if err := s.validator.ValidatePassword(req.Password); err != nil {
-		errs = append(errs, err)
+	if err := s.validator.Password(req.Password); err != nil {
+		return nil, err
 	}
 
 	user := models.NewUser()
@@ -81,77 +76,69 @@ func (s *service) Register(req *RegisterRequest) (*models.User, error) {
 	user.Lastname = req.Lastname
 
 	// Schema validation
-	if err := s.validator.ValidateSchema(user); err != nil {
-		errs = append(errs, err)
-	}
-
-	if len(errs) > 0 {
-		return nil, errs
+	if err := s.validator.Schema(user); err != nil {
+		return nil, err
 	}
 
 	// Is it available?
-	vErr := ErrNotAvailable
+	aErr := ErrUserNotAvailable
 	if existing, _ := s.repo.FindByUsername(req.Username); existing != nil {
-		vErr = vErr.F("username", "not_available")
+		aErr = aErr.F("username", "not_available")
 	}
 	if existing, _ := s.repo.FindByEmail(req.Email); existing != nil {
-		vErr = vErr.F("email", "not_available")
+		aErr = aErr.F("email", "not_available")
 	}
-	if len(vErr.Fields) > 0 {
-		return nil, vErr
+	if len(aErr.Fields) > 0 {
+		return nil, aErr
 	}
 
 	// Set password
 	hash, err := s.crypt.Hash(req.Password)
 	if err != nil {
-		return nil, ErrRegister.Wrap(err)
+		return nil, errors.ErrInternalServer.Wrap(err)
 	}
 	user.Password = hash
 
 	// Insert
 	if err := s.repo.Insert(user); err != nil {
-		return nil, ErrRegister.Wrap(err)
+		return nil, errors.ErrInternalServer.Wrap(err)
 	}
 
 	// Emit event
-	userCreatedEvent := NewUserEvent(user, "UserCreated")
-	if err := s.events.Publish(
-		userCreatedEvent,
-		&events.Options{Exchange: "user", Route: "user.created"},
-	); err != nil {
-		return nil, ErrRegister.Wrap(err)
-	}
+	// userCreatedEvent := NewUserEvent(user, "UserCreated")
+	// if err := s.events.Publish(
+	// 	userCreatedEvent,
+	// 	&events.Options{Exchange: "user", Route: "user.created"},
+	// ); err != nil {
+	// 	return nil, errors.ErrInternalServer.Wrap(err)
+	// }
 
 	return user, nil
 }
 
 type UpdateRequest struct {
 	Username *string `json:"username"`
-	Password *string `json:"password"`
 	Email    *string `json:"email"`
 	Name     *string `json:"name"`
 	Lastname *string `json:"lastname"`
 }
 
 func (s *service) Update(id string, req *UpdateRequest) (*models.User, error) {
+	if err := s.validator.UpdateRequest(req); err != nil {
+		return nil, err
+	}
+
 	user, err := s.getByID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	errs := make(errors.Errors, 0)
-	if req.Password != nil {
-		if err := s.validator.ValidatePassword(*req.Password); err != nil {
-			errs = append(errs, ErrPasswordValidation)
-		} else {
-			hash, err := s.crypt.Hash(*req.Password)
-			if err != nil {
-				return nil, ErrUpdate.Wrap(err)
-			}
-			user.Password = hash
-		}
+	if req.Username != nil {
+		user.Username = *req.Username
 	}
-
+	if req.Email != nil {
+		user.Email = *req.Email
+	}
 	if req.Name != nil {
 		user.Name = *req.Name
 	}
@@ -160,64 +147,64 @@ func (s *service) Update(id string, req *UpdateRequest) (*models.User, error) {
 	}
 
 	// Schema validation
-	if err := s.validator.ValidateSchema(user); err != nil {
-		errs = append(errs, err)
+	if err := s.validator.Schema(user); err != nil {
+		return nil, err
 	}
 
-	if len(errs) > 0 {
-		return nil, errs
-	}
-
-	vErr := ErrNotAvailable
+	// Available
+	aErr := ErrUserNotAvailable
 	if req.Username != nil {
 		if existing, _ := s.repo.FindByUsername(*req.Username); existing != nil && existing.ID != id {
-			vErr = vErr.F("username", "not_available")
+			aErr = aErr.F("username", "not_available")
 		} else {
 			user.Username = *req.Username
 		}
 	}
 	if req.Email != nil {
 		if existing, _ := s.repo.FindByEmail(*req.Email); existing != nil && existing.ID != id {
-			vErr = vErr.F("email", "not_available")
+			aErr = aErr.F("email", "not_available")
 		} else {
 			user.Email = *req.Email
 			user.Validated = false
 		}
 	}
-
-	if len(vErr.Fields) > 0 {
-		return nil, vErr
+	if len(aErr.Fields) > 0 {
+		return nil, aErr
 	}
 
 	// Update
 	if err := s.repo.Update(user); err != nil {
-		return nil, ErrUpdate.C("id", id).Wrap(err)
+		return nil, errors.ErrInternalServer.Wrap(err)
 	}
 
 	// Emit event
-	userUpdatedEvent := NewUserEvent(user, "UserUpdated")
-	if err := s.events.Publish(
-		userUpdatedEvent,
-		&events.Options{Exchange: "user", Route: "user.updated"},
-	); err != nil {
-		return nil, ErrUpdate.Wrap(err)
-	}
+	// userUpdatedEvent := NewUserEvent(user, "UserUpdated")
+	// if err := s.events.Publish(
+	// 	userUpdatedEvent,
+	// 	&events.Options{Exchange: "user", Route: "user.updated"},
+	// ); err != nil {
+	// 	return nil, errors.ErrInternalServer.Wrap(err)
+	// }
 
 	return user, nil
 }
 
 type ChangePasswordRequest struct {
-	CurrentPassword string `json:"current_password"`
-	NewPassword     string `json:"new_password"`
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required"`
 }
 
 func (s *service) ChangePassword(id string, req *ChangePasswordRequest) error {
+	if err := s.validator.ChangePasswordRequest(req); err != nil {
+		return err
+	}
+
 	user, err := s.getByID(id)
 	if err != nil {
 		return err
 	}
 
-	if err := s.validator.ValidatePassword(req.NewPassword); err != nil {
+	if err := s.validator.Password(req.NewPassword); err != nil {
 		return err
 	}
 
@@ -227,67 +214,60 @@ func (s *service) ChangePassword(id string, req *ChangePasswordRequest) error {
 
 	hash, err := s.crypt.Hash(req.NewPassword)
 	if err != nil {
-		return err
+		return errors.ErrInternalServer.Wrap(err)
 	}
 
 	user.Password = hash
 	if err := s.repo.Update(user); err != nil {
-		return ErrChangePassword.Wrap(err)
+		return errors.ErrInternalServer.Wrap(err)
 	}
 
 	return nil
 }
 
 func (s *service) Delete(id string) error {
-	user, err := s.getByID(id)
+	_, err := s.getByID(id)
 	if err != nil {
 		return err
 	}
 
 	// Delete
 	if err := s.repo.Delete(id); err != nil {
-		return ErrDelete.Wrap(err)
+		return errors.ErrInternalServer.Wrap(err)
 	}
 
 	// Emit event
-	userDeletedEvent := NewUserEvent(user, "UserDeleted")
-	if err := s.events.Publish(
-		userDeletedEvent,
-		&events.Options{Exchange: "user", Route: "user.deleted"},
-	); err != nil {
-		return ErrDelete.Wrap(err)
-	}
+	// userDeletedEvent := NewUserEvent(user, "UserDeleted")
+	// if err := s.events.Publish(
+	// 	userDeletedEvent,
+	// 	&events.Options{Exchange: "user", Route: "user.deleted"},
+	// ); err != nil {
+	// 	return errors.ErrInternalServer.Wrap(err)
+	// }
 
 	return nil
 }
 
 type LoginRequest struct {
-	UsernameOrEmail *string `json:"username_or_email"`
-	Password        *string `json:"password"`
+	UsernameOrEmail string `json:"username" validate:"required"`
+	Password        string `json:"password" validate:"required"`
 }
 
 func (s *service) Login(req *LoginRequest) (string, error) {
-	vErr := ErrInvalidLogin
-	if req.UsernameOrEmail == nil {
-		vErr = vErr.F("username", "required")
-	}
-	if req.Password == nil {
-		vErr = vErr.F("password", "required")
-	}
-	if len(vErr.Fields) > 0 {
-		return "", vErr
+	if err := s.validator.LoginRequest(req); err != nil {
+		return "", err
 	}
 
-	user, err := s.repo.FindByUsername(*req.UsernameOrEmail)
+	user, err := s.repo.FindByUsername(req.UsernameOrEmail)
 	if user == nil || err != nil {
-		user, err = s.repo.FindByEmail(*req.UsernameOrEmail)
+		user, err = s.repo.FindByEmail(req.UsernameOrEmail)
 	}
 
 	if user == nil || err != nil {
 		return "", ErrInvalidUser.Wrap(err)
 	}
 
-	if !s.crypt.Compare(user.Password, *req.Password) {
+	if !s.crypt.Compare(user.Password, req.Password) {
 		return "", ErrInvalidUser
 	}
 
@@ -301,7 +281,6 @@ func (s *service) Login(req *LoginRequest) (string, error) {
 
 func (s *service) Logout(tokenStr string) error {
 	token, err := s.authServ.Invalidate(tokenStr)
-
 	if err != nil {
 		return ErrInvalidUser.Wrap(err)
 	}
@@ -315,15 +294,15 @@ func (s *service) Logout(tokenStr string) error {
 
 func (s *service) getByID(id string) (*models.User, error) {
 	if id == "" {
-		return nil, ErrInvalidID
+		return nil, errors.ErrInvalidID
 	}
 
 	user, err := s.repo.FindByID(id)
-	if err != nil || !user.Enabled {
-		return nil, ErrNotFound.C("id", id).Wrap(err)
+	if err != nil {
+		return nil, errors.ErrNotFound.Wrap(err)
 	}
-	if !user.Validated {
-		return nil, ErrNotValidated.C("id", id)
+	if err := s.validator.Status(user); err != nil {
+		return nil, err
 	}
 
 	return user, nil
