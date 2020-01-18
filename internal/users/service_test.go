@@ -94,14 +94,13 @@ func TestGetByID(t *testing.T) {
 			user, err := m.service.GetByID(test.id)
 
 			if test.err != nil { // Error
-				if assert.NotNil(err) {
-					errors.Assert(t, test.err, err)
-				}
+				errors.Assert(t, test.err, err)
 				assert.Nil(user)
 			} else { // OK
 				assert.Nil(err)
 				if assert.NotNil(user) {
 					assert.Equal(test.id, user.ID)
+					assert.Equal(mUser, user)
 				}
 			}
 			m.crypt.AssertExpectations(t)
@@ -224,9 +223,7 @@ func TestRegister(t *testing.T) {
 			user, err := serv.Register(test.req)
 
 			if test.err != nil {
-				if assert.NotNil(err) {
-					errors.Assert(t, test.err, err)
-				}
+				errors.Assert(t, test.err, err)
 				assert.Nil(user)
 			} else {
 				assert.Nil(err)
@@ -438,9 +435,7 @@ func TestUpdate(t *testing.T) {
 			user, err := serv.Update(test.id, test.req)
 
 			if test.err != nil {
-				if assert.NotNil(err) {
-					errors.Assert(t, test.err, err)
-				}
+				errors.Assert(t, test.err, err)
 				assert.Nil(user)
 			} else {
 				assert.Nil(err)
@@ -559,7 +554,6 @@ func TestChangePassword(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			assert := assert.New(t)
 			serv := newMockService()
 			if test.mock != nil {
 				test.mock(serv)
@@ -567,13 +561,8 @@ func TestChangePassword(t *testing.T) {
 
 			err := serv.ChangePassword(test.id, test.req)
 
-			if test.err != nil {
-				if assert.NotNil(err) {
-					errors.Assert(t, test.err, err)
-				}
-			} else {
-				assert.Nil(err)
-			}
+			errors.Assert(t, test.err, err)
+
 			serv.validator.AssertExpectations(t)
 			serv.repo.AssertExpectations(t)
 			serv.crypt.AssertExpectations(t)
@@ -738,9 +727,7 @@ func TestLogin(t *testing.T) {
 			tokenStr, err := serv.Login(test.req)
 
 			if test.err != nil {
-				if assert.NotNil(err) {
-					errors.Assert(t, test.err, err)
-				}
+				errors.Assert(t, test.err, err)
 				assert.Empty(tokenStr)
 			} else {
 				assert.Nil(err)
@@ -794,7 +781,6 @@ func TestLogout(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			assert := assert.New(t)
 			serv := newMockService()
 			if test.mock != nil {
 				test.mock(serv)
@@ -802,13 +788,8 @@ func TestLogout(t *testing.T) {
 
 			err := serv.Logout(test.tokenStr)
 
-			if test.err != nil {
-				if assert.NotNil(err) {
-					errors.Assert(t, test.err, err)
-				}
-			} else {
-				assert.Nil(err)
-			}
+			errors.Assert(t, test.err, err)
+
 			serv.repo.AssertExpectations(t)
 			serv.authServ.AssertExpectations(t)
 			serv.events.AssertExpectations(t)
