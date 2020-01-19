@@ -3,3 +3,6 @@ GRANT ALL PRIVILEGES ON DATABASE test TO admin;
 
 CREATE DATABASE users_and_organizations;
 GRANT ALL PRIVILEGES ON DATABASE users_and_organizations TO admin;
+
+CREATE DATABASE products;
+GRANT ALL PRIVILEGES ON DATABASE products TO admin;
