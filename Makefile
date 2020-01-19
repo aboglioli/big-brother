@@ -33,10 +33,12 @@ up:
 
 down:
 	docker-compose down -v --remove-orphans
-
-# Migrations
-migrate:
+	
+create-databases:
 	docker-compose exec \
 		${POSTGRES_CONTAINER} \
 		psql -h ${POSTGRES_HOST} -p ${POSTGRES_PORT} -U ${POSTGRES_USERNAME} \
-		-f migrations/*.sql
+		-f migrations/databases.sql
+
+migrate:
+	go run cmd/migrate/main.go

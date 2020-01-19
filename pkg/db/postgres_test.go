@@ -7,6 +7,7 @@ import (
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/aboglioli/big-brother/pkg/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPostgres(t *testing.T) {
@@ -24,64 +25,63 @@ func TestPostgres(t *testing.T) {
 	if !assert.Nil(err) {
 		t.Log(err.(errors.Error).Cause)
 	}
-	if assert.NotNil(db) {
-		_, err := db.Exec(`
+	require.NotNil(t, db)
+
+	_, err = db.Exec(`
 			CREATE TABLE IF NOT EXISTS test_table (
 				name text,
 				age integer,
 				lastname text
 			);
 		`)
-		assert.Nil(err)
+	assert.Nil(err)
 
-		_, err = db.Exec(`
-			INSERT INTO test_table(name, age, lastname)
+	_, err = db.Exec(`
+		INSERT INTO test_table(name, age, lastname)
 			VALUES('Alan', 21, NULL);
-			INSERT INTO test_Table(name, age, lastname)
+		INSERT INTO test_Table(name, age, lastname)
 			VALUES('Boglioli', 23, 'Caffe');
-		`)
-		assert.Nil(err)
+	`)
+	assert.Nil(err)
 
-		rows, err := db.Query("SELECT COUNT(*) FROM test_table")
-		assert.Nil(err)
-		rows.Next()
-		var count int
-		err = rows.Scan(&count)
-		assert.Nil(err)
-		assert.Equal(2, count)
+	rows, err := db.Query("SELECT COUNT(*) FROM test_table")
+	assert.Nil(err)
+	rows.Next()
+	var count int
+	err = rows.Scan(&count)
+	assert.Nil(err)
+	assert.Equal(2, count)
 
-		type person struct {
-			name     string
-			age      int
-			lastname *string
-		}
-
-		rows, err = db.Query("SELECT * FROM test_table")
-		assert.Nil(err)
-		people := make([]person, 0)
-		for rows.Next() {
-			var p person
-			err := rows.Scan(&p.name, &p.age, &p.lastname)
-			assert.Nil(err)
-			people = append(people, p)
-		}
-		assert.Nil(rows.Err())
-		assert.Len(people, 2)
-		assert.Equal(person{"Alan", 21, nil}, people[0])
-		assert.Equal(person{"Boglioli", 23, utils.NewString("Caffe")}, people[1])
-
-		row := db.QueryRow("SELECT * FROM test_table WHERE lastname = $1 and age > $2", "Caffe", 20)
-		var p person
-		err = row.Scan(&p.name, &p.age, &p.lastname)
-		assert.Nil(err)
-		assert.Equal(person{"Boglioli", 23, utils.NewString("Caffe")}, p)
-
-		row = db.QueryRow("SELECT * FROM test_table WHERE lastname = $1 and age < $2", "Caffe", 20)
-		err = row.Scan(&p.name, &p.age, &p.lastname)
-		assert.NotNil(err)
-
-		_, err = db.Exec("DROP TABLE test_table")
-		assert.Nil(err)
+	type person struct {
+		name     string
+		age      int
+		lastname *string
 	}
 
+	rows, err = db.Query("SELECT * FROM test_table")
+	assert.Nil(err)
+	people := make([]person, 0)
+	for rows.Next() {
+		var p person
+		err := rows.Scan(&p.name, &p.age, &p.lastname)
+		assert.Nil(err)
+		people = append(people, p)
+	}
+	assert.Nil(rows.Err())
+	assert.Len(people, 2)
+	assert.Equal(person{"Alan", 21, nil}, people[0])
+	assert.Equal(person{"Boglioli", 23, utils.NewString("Caffe")}, people[1])
+
+	row := db.QueryRow("SELECT * FROM test_table WHERE lastname = $1 and age > $2", "Caffe", 20)
+	var p person
+	err = row.Scan(&p.name, &p.age, &p.lastname)
+	assert.Nil(err)
+	assert.Equal(person{"Boglioli", 23, utils.NewString("Caffe")}, p)
+
+	row = db.QueryRow("SELECT * FROM test_table WHERE lastname = $1 and age < $2", "Caffe", 20)
+	err = row.Scan(&p.name, &p.age, &p.lastname)
+	assert.NotNil(err)
+
+	_, err = db.Exec("DROP TABLE test_table")
+	assert.Nil(err)
 }
