@@ -106,13 +106,11 @@ func (q *queue) runTask(t *task) {
 
 		if i == q.retries {
 			res.Done = true
+			break
 		}
 
 		select {
 		case t.result <- res:
-			if res.Done {
-				return
-			}
 			time.Sleep(q.sleep)
 		case <-time.After(q.sleep):
 		}

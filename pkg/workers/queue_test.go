@@ -170,4 +170,20 @@ func TestExecutionOrder(t *testing.T) {
 	}
 
 	assert.Equal([]string{"t2", "t2", "t2", "t1", "t1", "t1"}, order)
+
+	order = []string{}
+	q.Do(func() error {
+		order = append(order, "t1")
+		return errors.New("err")
+	})
+	ch = q.Do(func() error {
+		time.Sleep(10 * time.Millisecond)
+		order = append(order, "t2")
+		return errors.New("err")
+	})
+
+	for range ch {
+	}
+
+	assert.Equal([]string{"t1", "t1", "t1", "t2", "t2", "t2"}, order)
 }
