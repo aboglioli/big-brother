@@ -26,6 +26,7 @@ func TestPostgres(t *testing.T) {
 		t.Log(err.(errors.Error).Cause)
 	}
 	require.NotNil(t, db)
+	defer db.Close()
 
 	_, err = db.Exec(`
 			CREATE TABLE IF NOT EXISTS test_table (
@@ -44,11 +45,10 @@ func TestPostgres(t *testing.T) {
 	`)
 	assert.Nil(err)
 
-	rows, err := db.Query("SELECT COUNT(*) FROM test_table")
-	assert.Nil(err)
-	rows.Next()
+	row := db.QueryRow("SELECT COUNT(*) FROM test_table")
+	assert.NotNil(row)
 	var count int
-	err = rows.Scan(&count)
+	err = row.Scan(&count)
 	assert.Nil(err)
 	assert.Equal(2, count)
 
@@ -58,7 +58,7 @@ func TestPostgres(t *testing.T) {
 		lastname *string
 	}
 
-	rows, err = db.Query("SELECT * FROM test_table")
+	rows, err := db.Query("SELECT * FROM test_table")
 	assert.Nil(err)
 	people := make([]person, 0)
 	for rows.Next() {
@@ -67,12 +67,13 @@ func TestPostgres(t *testing.T) {
 		assert.Nil(err)
 		people = append(people, p)
 	}
+	rows.Close()
 	assert.Nil(rows.Err())
 	assert.Len(people, 2)
 	assert.Equal(person{"Alan", 21, nil}, people[0])
 	assert.Equal(person{"Boglioli", 23, utils.NewString("Caffe")}, people[1])
 
-	row := db.QueryRow("SELECT * FROM test_table WHERE lastname = $1 and age > $2", "Caffe", 20)
+	row = db.QueryRow("SELECT * FROM test_table WHERE lastname = $1 and age > $2", "Caffe", 20)
 	var p person
 	err = row.Scan(&p.name, &p.age, &p.lastname)
 	assert.Nil(err)

@@ -54,6 +54,7 @@ func (m Migration) Run() {
 	c := config.Get()
 
 	db, err := db.ConnectPostgres(c.PostgresURL, m.Database, c.PostgresUsername, c.PostgresPassword)
+	defer db.Close()
 	if err != nil {
 		panic(err)
 	}
@@ -86,10 +87,7 @@ func (m Migration) Run() {
 
 		fmt.Printf("OK\n")
 	}
-
 	fmt.Println()
-
-	db.Close()
 }
 
 func (m Migration) addScript(db *sql.DB, script string) {

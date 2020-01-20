@@ -1,104 +1,122 @@
 package workers
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
-type Task interface {
-	Done() <-chan bool
-	Err() <-chan error
+type Result struct {
+	Done    bool
+	Err     error
+	Success bool
 }
 
-type task struct {
-	fn   func() error
-	done chan bool
-	err  chan error
-}
-
-func (t *task) Done() <-chan bool {
-	return t.done
-}
-
-func (t *task) Err() <-chan error {
-	return t.err
-}
-
-// Interface
 type Queue interface {
-	Do(fn func() error) Task
+	Do(fn func() error) <-chan Result
 	Run()
 	Finish()
 }
 
+type task struct {
+	fn     func() error
+	result chan Result
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
 type queue struct {
 	workers int
-	tasks   chan *task
 	retries int
 	sleep   time.Duration
+
+	chTasks chan *task
+	tasks   []*task
 }
 
 func NewQueue(workers int, retries int, sleepBetweenCalls time.Duration) Queue {
 	return &queue{
 		workers: workers,
-		tasks:   make(chan *task, 16),
 		retries: retries,
 		sleep:   sleepBetweenCalls,
+
+		chTasks: make(chan *task),
+		tasks:   make([]*task, 0),
 	}
 }
-
-func (q *queue) Do(fn func() error) Task {
-	task := &task{
-		fn:   fn,
-		done: make(chan bool),
-		err:  make(chan error),
-	}
-
-	go func() {
-		q.tasks <- task
-	}()
-
-	return task
-}
-
 func (q *queue) Run() {
 	for i := 0; i < q.workers; i++ {
 		go q.worker()
 	}
 }
 
+func (q *queue) Do(fn func() error) <-chan Result {
+	ctx, cancel := context.WithCancel(context.Background())
+	t := &task{
+		fn:     fn,
+		result: make(chan Result),
+		ctx:    ctx,
+		cancel: cancel,
+	}
+	q.addTask(t)
+	return t.result
+}
+
 func (q *queue) Finish() {
-	close(q.tasks)
+	close(q.chTasks)
+}
+
+func (q *queue) addTask(t *task) {
+	if len(q.tasks) == q.workers {
+		fTask, rTasks := q.tasks[0], q.tasks[1:]
+		fTask.cancel()
+		q.tasks = rTasks
+	}
+
+	q.tasks = append(q.tasks, t)
+	q.chTasks <- t
 }
 
 func (q *queue) worker() {
-	for t := range q.tasks {
+	for t := range q.chTasks {
 		q.runTask(t)
 	}
 }
 
 func (q *queue) runTask(t *task) {
-	defer func() {
-		close(t.done)
-		close(t.err)
-	}()
+	defer close(t.result)
 
-	for i := 0; i < q.retries; i++ {
+	res := Result{
+		Done:    false,
+		Err:     nil,
+		Success: false,
+	}
+	for i := 1; i <= q.retries; i++ {
 		err := t.fn()
 		if err == nil {
-			select {
-			case t.done <- true:
-			default:
-			}
-			return
+			res.Done = true
+			res.Err = nil
+			res.Success = true
+			break
+		}
+
+		res.Err = err
+
+		if i == q.retries {
+			res.Done = true
 		}
 
 		select {
-		case t.err <- err:
+		case t.result <- res:
+			if res.Done {
+				return
+			}
 			time.Sleep(q.sleep)
 		case <-time.After(q.sleep):
 		}
 	}
 
 	select {
-	case t.done <- false:
-	default:
+	case t.result <- res:
+	case <-t.ctx.Done():
 	}
 }
