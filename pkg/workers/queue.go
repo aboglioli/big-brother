@@ -6,9 +6,8 @@ import (
 )
 
 type Result struct {
-	Done    bool
-	Err     error
-	Success bool
+	Done bool
+	Err  error
 }
 
 type Queue interface {
@@ -28,6 +27,7 @@ type queue struct {
 	workers int
 	retries int
 	sleep   time.Duration
+	running bool
 
 	chTasks chan *task
 	tasks   []*task
@@ -47,9 +47,14 @@ func (q *queue) Run() {
 	for i := 0; i < q.workers; i++ {
 		go q.worker()
 	}
+	q.running = true
 }
 
 func (q *queue) Do(fn func() error) <-chan Result {
+	if !q.running {
+		panic("queue is not running")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	t := &task{
 		fn:     fn,
@@ -86,16 +91,14 @@ func (q *queue) runTask(t *task) {
 	defer close(t.result)
 
 	res := Result{
-		Done:    false,
-		Err:     nil,
-		Success: false,
+		Done: false,
+		Err:  nil,
 	}
 	for i := 1; i <= q.retries; i++ {
 		err := t.fn()
 		if err == nil {
 			res.Done = true
 			res.Err = nil
-			res.Success = true
 			break
 		}
 
