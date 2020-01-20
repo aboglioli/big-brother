@@ -114,21 +114,42 @@ func TestPostgres(t *testing.T) {
 		assert.Equal(person{name: "name2", age: 26, lastname: nil}, p)
 	})
 
-	t.Run("transaction rollback", func(t *testing.T) {
+	t.Run("transaction", func(t *testing.T) {
 		assert := assert.New(t)
+
+		// Rollback
 		tx, err := db.Begin()
 		assert.Nil(err)
 		assert.NotNil(tx)
 
 		_, err = tx.Exec("INSERT INTO test_table(name, age, lastname) VALUES('Trans', 1, 'Action')")
 		assert.Nil(err)
-		err = tx.Rollback()
-		assert.Nil(err)
 
 		var p person
 		row := db.QueryRow("SELECT * FROM test_table WHERE name = 'Trans' AND lastname = 'Action'")
 		err = row.Scan(&p.name, &p.age, &p.lastname)
 		assert.NotNil(err)
+
+		err = tx.Rollback()
+		assert.Nil(err)
+
+		row = db.QueryRow("SELECT * FROM test_table WHERE name = 'Trans' AND lastname = 'Action'")
+		err = row.Scan(&p.name, &p.age, &p.lastname)
+		assert.NotNil(err)
+
+		// Commit
+		tx, err = db.Begin()
+		assert.Nil(err)
+		assert.NotNil(tx)
+		_, err = tx.Exec("INSERT INTO test_table(name, age, lastname) VALUES('Trans', 1, 'Action')")
+		assert.Nil(err)
+		err = tx.Commit()
+		assert.Nil(err)
+
+		row = db.QueryRow("SELECT * FROM test_table WHERE name = 'Trans' AND lastname = 'Action'")
+		err = row.Scan(&p.name, &p.age, &p.lastname)
+		assert.Nil(err)
+		assert.Equal(person{"Trans", 1, utils.NewString("Action")}, p)
 	})
 
 	_, err = db.Exec("DROP TABLE test_table")
