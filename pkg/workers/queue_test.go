@@ -2,6 +2,7 @@ package workers
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -111,6 +112,20 @@ func TestHangingTasks(t *testing.T) {
 	assert.Equal(Result{true, nil}, getRes(t, chRes2))
 }
 
+func TestQueueWait(t *testing.T) {
+	// assert := assert.New(t)
+	q := NewQueue(3, 2, 0)
+	q.Run()
+
+	q.Do(func() error { return nil })
+	q.Do(func() error { return errors.New("err1") })
+	q.Do(func() error { return errors.New("err2") })
+	q.Do(func() error { return nil })
+	q.Do(func() error { return errors.New("err3") })
+
+	q.Wait()
+}
+
 func TestInfiniteRetries(t *testing.T) {
 	assert := assert.New(t)
 	q := NewQueue(4, 999, 10*time.Nanosecond).(*queue)
@@ -186,4 +201,31 @@ func TestExecutionOrder(t *testing.T) {
 	}
 
 	assert.Equal([]string{"t1", "t1", "t1", "t2", "t2", "t2"}, order)
+}
+
+func BenchmarkWorkersAndRetries(b *testing.B) {
+	nTasks := 10
+	for w := 1; w <= 16; w++ {
+		for r := 4; r <= 4; r++ {
+			q := NewQueue(w, r, 0)
+			q.Run()
+			b.Run(fmt.Sprintf("w=%d r=%d errors", w, r), func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					for i := 0; i < nTasks; i++ {
+						q.Do(func() error { return errors.New("err") })
+					}
+					q.Wait()
+				}
+			})
+
+			b.Run(fmt.Sprintf("w=%d r=%d ok", w, r), func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					for i := 0; i < nTasks; i++ {
+						q.Do(func() error { return nil })
+					}
+					q.Wait()
+				}
+			})
+		}
+	}
 }

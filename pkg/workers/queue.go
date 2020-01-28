@@ -2,6 +2,7 @@ package workers
 
 import (
 	"context"
+	"sync"
 	"time"
 )
 
@@ -13,12 +14,14 @@ type Result struct {
 type Queue interface {
 	Do(fn func() error) <-chan Result
 	Run()
+	Wait()
 	Finish()
 }
 
 type task struct {
 	fn     func() error
 	result chan Result
+	done   chan bool
 	ctx    context.Context
 	cancel context.CancelFunc
 }
@@ -34,6 +37,10 @@ type queue struct {
 }
 
 func NewQueue(workers int, retries int, sleepBetweenCalls time.Duration) Queue {
+	if workers < 1 || retries < 1 {
+		panic("invalid args")
+	}
+
 	return &queue{
 		workers: workers,
 		retries: retries,
@@ -59,6 +66,7 @@ func (q *queue) Do(fn func() error) <-chan Result {
 	t := &task{
 		fn:     fn,
 		result: make(chan Result),
+		done:   make(chan bool),
 		ctx:    ctx,
 		cancel: cancel,
 	}
@@ -66,7 +74,23 @@ func (q *queue) Do(fn func() error) <-chan Result {
 	return t.result
 }
 
+func (q *queue) Wait() {
+	var wg sync.WaitGroup
+	for _, t := range q.tasks {
+		t := t
+		wg.Add(1)
+		go func() {
+			<-t.done
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+}
+
 func (q *queue) Finish() {
+	for _, t := range q.tasks {
+		t.cancel()
+	}
 	close(q.chTasks)
 }
 
@@ -89,6 +113,7 @@ func (q *queue) worker() {
 
 func (q *queue) runTask(t *task) {
 	defer close(t.result)
+	defer close(t.done)
 
 	res := Result{
 		Done: false,
@@ -118,6 +143,7 @@ func (q *queue) runTask(t *task) {
 
 	select {
 	case t.result <- res:
+	case t.done <- true:
 	case <-t.ctx.Done():
 	}
 }
