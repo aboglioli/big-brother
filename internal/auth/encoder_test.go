@@ -1,11 +1,12 @@
 package auth
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestEncode(t *testing.T) {
+func TestEncoderEncode(t *testing.T) {
 	assert := assert.New(t)
 
 	enc := &encoder{[]byte("my_secret")}
@@ -16,7 +17,7 @@ func TestEncode(t *testing.T) {
 	assert.Greater(len(tokenStr), 10)
 }
 
-func TestDecode(t *testing.T) {
+func TestEncoderDecode(t *testing.T) {
 	assert := assert.New(t)
 
 	enc := &encoder{[]byte("my_secret")}

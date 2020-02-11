@@ -23,7 +23,7 @@ func mockUser() *models.User {
 	return user
 }
 
-func TestGetByID(t *testing.T) {
+func TestServiceGetByID(t *testing.T) {
 	mUser := mockUser()
 
 	tests := []struct {
@@ -34,7 +34,7 @@ func TestGetByID(t *testing.T) {
 	}{{
 		"empty id",
 		"",
-		errors.ErrInvalidID,
+		errors.ErrNotFound,
 		nil,
 	}, {
 		"invalid id",
@@ -112,7 +112,7 @@ func TestGetByID(t *testing.T) {
 	}
 }
 
-func TestRegister(t *testing.T) {
+func TestServiceRegister(t *testing.T) {
 	mUser := mockUser()
 	req := &RegisterRequest{
 		Username: mUser.Username,
@@ -248,7 +248,7 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-func TestUpdate(t *testing.T) {
+func TestServiceUpdate(t *testing.T) {
 	mUser := mockUser()
 	req := &UpdateRequest{
 		Username: utils.NewString("new-username"),
@@ -466,7 +466,7 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-func TestChangePassword(t *testing.T) {
+func TestServiceChangePassword(t *testing.T) {
 	mUser := mockUser()
 	req := &ChangePasswordRequest{
 		CurrentPassword: "12345678",
@@ -483,7 +483,7 @@ func TestChangePassword(t *testing.T) {
 		"empty id",
 		"",
 		req,
-		errors.ErrInvalidID,
+		errors.ErrNotFound,
 		func(m *mockService) {
 			m.validator.On("ChangePasswordRequest", req).Return(nil)
 		},
@@ -570,7 +570,7 @@ func TestChangePassword(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestServiceDelete(t *testing.T) {
 	mUser := mockUser()
 
 	tests := []struct {
@@ -653,7 +653,7 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestLogin(t *testing.T) {
+func TestServiceLogin(t *testing.T) {
 	mUser := mockUser()
 	mTokenStr := "encoded.token"
 
@@ -744,7 +744,7 @@ func TestLogin(t *testing.T) {
 	}
 }
 
-func TestLogout(t *testing.T) {
+func TestServiceLogout(t *testing.T) {
 	mUser := mockUser()
 	mToken := models.NewToken(mUser.ID)
 	mTokenStr := "encoded.token"

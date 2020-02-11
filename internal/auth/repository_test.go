@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestFindByID(t *testing.T) {
+func TestRepositoryFindByID(t *testing.T) {
 	mToken := models.NewToken("user123")
 	mBytes, err := json.Marshal(mToken)
 	require.Nil(t, err)
@@ -72,7 +72,7 @@ func TestFindByID(t *testing.T) {
 	}
 }
 
-func TestInsert(t *testing.T) {
+func TestRepositoryInsert(t *testing.T) {
 	mToken := models.NewToken("user123")
 	mBytes, err := json.Marshal(mToken)
 	require.Nil(t, err)
@@ -121,7 +121,7 @@ func TestInsert(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestRepositoryDelete(t *testing.T) {
 	tests := []struct {
 		name string
 		id   string

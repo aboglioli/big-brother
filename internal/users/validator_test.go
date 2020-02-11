@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestValidateStatus(t *testing.T) {
+func TestValidatorStatus(t *testing.T) {
 	tests := []struct {
 		name string
 		user func(u *models.User) *models.User
@@ -61,7 +61,7 @@ func TestValidateStatus(t *testing.T) {
 	}
 }
 
-func TestValidateSchema(t *testing.T) {
+func TestValidatorSchema(t *testing.T) {
 	tests := []struct {
 		name string
 		mock func(u *models.User)
@@ -177,7 +177,7 @@ func TestValidateSchema(t *testing.T) {
 	}
 }
 
-func TestValidatePassword(t *testing.T) {
+func TestValidatorPassword(t *testing.T) {
 	tests := []struct {
 		pwd string
 		err error
@@ -221,7 +221,7 @@ func TestValidatePassword(t *testing.T) {
 	}
 }
 
-func TestValidateRegisterRequest(t *testing.T) {
+func TestValidatorRegisterRequest(t *testing.T) {
 	tests := []struct {
 		name string
 		req  *RegisterRequest
@@ -285,7 +285,7 @@ func TestValidateRegisterRequest(t *testing.T) {
 	}
 }
 
-func TestValidateUpdateRequest(t *testing.T) {
+func TestValidatortUpdateRequest(t *testing.T) {
 	tests := []struct {
 		name string
 		req  *UpdateRequest
@@ -344,7 +344,7 @@ func TestValidateUpdateRequest(t *testing.T) {
 	}
 }
 
-func TestChangePasswordRequest(t *testing.T) {
+func TestValidatorChangePasswordRequest(t *testing.T) {
 	tests := []struct {
 		name string
 		req  *ChangePasswordRequest
@@ -389,7 +389,7 @@ func TestChangePasswordRequest(t *testing.T) {
 	}
 }
 
-func TestValidateLoginRequest(t *testing.T) {
+func TestValidatorLoginRequest(t *testing.T) {
 	tests := []struct {
 		name string
 		req  *LoginRequest

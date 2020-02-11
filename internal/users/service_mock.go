@@ -52,26 +52,20 @@ type mockRepository struct {
 
 func (r *mockRepository) FindByID(id string) (*models.User, error) {
 	args := r.Called(id)
-	if user, ok := args.Get(0).(*models.User); ok {
-		return user, args.Error(1)
-	}
-	return nil, args.Error(1)
+	user, _ := args.Get(0).(*models.User)
+	return user, args.Error(1)
 }
 
 func (r *mockRepository) FindByUsername(username string) (*models.User, error) {
 	args := r.Called(username)
-	if user, ok := args.Get(0).(*models.User); ok {
-		return user, args.Error(1)
-	}
-	return nil, args.Error(1)
+	user, _ := args.Get(0).(*models.User)
+	return user, args.Error(1)
 }
 
 func (r *mockRepository) FindByEmail(email string) (*models.User, error) {
 	args := r.Called(email)
-	if user, ok := args.Get(0).(*models.User); ok {
-		return user, args.Error(1)
-	}
-	return nil, args.Error(1)
+	user, _ := args.Get(0).(*models.User)
+	return user, args.Error(1)
 }
 
 func (r *mockRepository) Insert(u *models.User) error {
@@ -101,18 +95,14 @@ func (s *mockAuthService) Create(userID string) (string, error) {
 
 func (s *mockAuthService) Validate(tokenStr string) (*models.Token, error) {
 	args := s.Called(tokenStr)
-	if token, ok := args.Get(0).(*models.Token); ok {
-		return token, args.Error(1)
-	}
-	return nil, args.Error(1)
+	token, _ := args.Get(0).(*models.Token)
+	return token, args.Error(1)
 }
 
 func (s *mockAuthService) Invalidate(tokenStr string) (*models.Token, error) {
 	args := s.Called(tokenStr)
-	if token, ok := args.Get(0).(*models.Token); ok {
-		return token, args.Error(1)
-	}
-	return nil, args.Error(1)
+	token, _ := args.Get(0).(*models.Token)
+	return token, args.Error(1)
 }
 
 // Crypt

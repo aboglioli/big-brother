@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestCreateToken(t *testing.T) {
+func TestServiceCreate(t *testing.T) {
 	mTokenStr := "encoded.token"
 
 	tests := []struct {
@@ -68,7 +68,7 @@ func TestCreateToken(t *testing.T) {
 	}
 }
 
-func TestValidate(t *testing.T) {
+func TestServiceValidate(t *testing.T) {
 	mToken := models.NewToken("user123")
 	mTokenStr := "encoded.token"
 
@@ -135,7 +135,7 @@ func TestValidate(t *testing.T) {
 	}
 }
 
-func TestInvalidate(t *testing.T) {
+func TestServiceInvalidate(t *testing.T) {
 	mToken := models.NewToken("user123")
 	mTokenStr := "encoded.token"
 

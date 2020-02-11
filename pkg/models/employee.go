@@ -5,7 +5,7 @@ type Employee struct {
 	Timestamp
 	UserID         string `json:"user_id"`
 	OrganizationID string `json:"organization_id"`
-	RoleID         string `json:"role_id"`
+	Role           Role   `json:"role"`
 }
 
 func NewEmployee() *Employee {

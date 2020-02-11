@@ -23,3 +23,33 @@ type Repository interface {
 	Update(*models.User) error
 	Delete(id string) error
 }
+
+type sqlRepository struct{}
+
+func NewRepository() Repository {
+	return &sqlRepository{}
+}
+
+func (r *sqlRepository) FindByID(id string) (*models.User, error) {
+	return nil, nil
+}
+
+func (r *sqlRepository) FindByUsername(username string) (*models.User, error) {
+	return nil, nil
+}
+
+func (r *sqlRepository) FindByEmail(email string) (*models.User, error) {
+	return nil, nil
+}
+
+func (r *sqlRepository) Insert(u *models.User) error {
+	return nil
+}
+
+func (r *sqlRepository) Update(u *models.User) error {
+	return nil
+}
+
+func (r *sqlRepository) Delete(id string) error {
+	return nil
+}

@@ -27,7 +27,10 @@ func populate(db *sql.DB, users ...*models.User) error {
 	return nil
 }
 
-func TestFindByID(t *testing.T) {
+func TestRepositoryFindByID(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	c := config.Get()
 	db, err := db.ConnectPostgres(c.PostgresURL, "test", c.PostgresUsername, c.PostgresPassword)
 	require.Nil(t, err)

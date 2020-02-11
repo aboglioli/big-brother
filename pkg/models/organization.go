@@ -12,3 +12,8 @@ func NewOrganization() *Organization {
 		Timestamp: NewTimestamp(),
 	}
 }
+
+func (o *Organization) Clone() *Organization {
+	c := *o
+	return &c
+}

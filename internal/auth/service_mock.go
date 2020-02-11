@@ -27,10 +27,8 @@ type mockRepository struct {
 
 func (m *mockRepository) FindByID(tokenID string) (*models.Token, error) {
 	args := m.Called(tokenID)
-	if token, ok := args.Get(0).(*models.Token); ok {
-		return token, args.Error(1)
-	}
-	return nil, args.Error(1)
+	token, _ := args.Get(0).(*models.Token)
+	return token, args.Error(1)
 }
 
 func (m *mockRepository) Insert(token *models.Token) error {

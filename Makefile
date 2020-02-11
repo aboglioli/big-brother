@@ -12,13 +12,15 @@ run:
 	go run -race cmd/main.go
 
 test:
-	go test ./...
+	# go test ./...
+	gotestsum
 
 vtest:
 	go test ./... -v
 
 stest:
-	go test -short ./...
+	# go test -short ./...
+	gotestsum ./... -short
 
 lint:
 	gofmt -s -w .
@@ -33,7 +35,7 @@ up:
 
 down:
 	docker-compose down -v --remove-orphans
-	
+
 create-databases:
 	docker-compose exec \
 		${POSTGRES_CONTAINER} \

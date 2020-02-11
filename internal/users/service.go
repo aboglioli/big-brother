@@ -26,6 +26,32 @@ type Service interface {
 	Logout(tokenStr string) error
 }
 
+// Request DTOs
+type RegisterRequest struct {
+	Username string `json:"username" validate:"required"`
+	Password string `json:"password" validate:"required"`
+	Email    string `json:"email" validate:"required,email"`
+	Name     string `json:"name" validate:"required"`
+	Lastname string `json:"lastname" validate:"required"`
+}
+
+type UpdateRequest struct {
+	Username *string `json:"username"`
+	Email    *string `json:"email" validate:"email"`
+	Name     *string `json:"name"`
+	Lastname *string `json:"lastname"`
+}
+
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required"`
+}
+
+type LoginRequest struct {
+	UsernameOrEmail string `json:"username" validate:"required"`
+	Password        string `json:"password" validate:"required"`
+}
+
 // Implementations
 type service struct {
 	repo      Repository
@@ -47,14 +73,6 @@ func NewService(repo Repository, events events.Bus, authServ auth.Service) Servi
 
 func (s *service) GetByID(id string) (*models.User, error) {
 	return s.getByID(id)
-}
-
-type RegisterRequest struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
-	Email    string `json:"email" validate:"required,email"`
-	Name     string `json:"name" validate:"required"`
-	Lastname string `json:"lastname" validate:"required"`
 }
 
 func (s *service) Register(req *RegisterRequest) (*models.User, error) {
@@ -114,13 +132,6 @@ func (s *service) Register(req *RegisterRequest) (*models.User, error) {
 	// }
 
 	return user, nil
-}
-
-type UpdateRequest struct {
-	Username *string `json:"username"`
-	Email    *string `json:"email" validate:"email"`
-	Name     *string `json:"name"`
-	Lastname *string `json:"lastname"`
 }
 
 func (s *service) Update(id string, req *UpdateRequest) (*models.User, error) {
@@ -189,11 +200,6 @@ func (s *service) Update(id string, req *UpdateRequest) (*models.User, error) {
 	return user, nil
 }
 
-type ChangePasswordRequest struct {
-	CurrentPassword string `json:"current_password" validate:"required"`
-	NewPassword     string `json:"new_password" validate:"required"`
-}
-
 func (s *service) ChangePassword(id string, req *ChangePasswordRequest) error {
 	if err := s.validator.ChangePasswordRequest(req); err != nil {
 		return err
@@ -248,11 +254,6 @@ func (s *service) Delete(id string) error {
 	return nil
 }
 
-type LoginRequest struct {
-	UsernameOrEmail string `json:"username" validate:"required"`
-	Password        string `json:"password" validate:"required"`
-}
-
 func (s *service) Login(req *LoginRequest) (string, error) {
 	if err := s.validator.LoginRequest(req); err != nil {
 		return "", err
@@ -294,7 +295,7 @@ func (s *service) Logout(tokenStr string) error {
 
 func (s *service) getByID(id string) (*models.User, error) {
 	if id == "" {
-		return nil, errors.ErrInvalidID
+		return nil, errors.ErrNotFound.M("invalid id")
 	}
 
 	user, err := s.repo.FindByID(id)
