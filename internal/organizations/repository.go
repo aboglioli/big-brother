@@ -14,7 +14,7 @@ var (
 
 type Repository interface {
 	FindByID(id string) (*models.Organization, error)
-	Search(name string) ([]*models.Organization, error)
+	SearchByName(name string) ([]*models.Organization, error)
 
 	Insert(*models.Organization) error
 	Update(*models.Organization) error

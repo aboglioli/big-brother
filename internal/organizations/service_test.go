@@ -124,7 +124,7 @@ func TestServiceSearch(t *testing.T) {
 		[]*models.Organization{mOrg1, mOrg2},
 		func(m *mockService) {
 			cOrg1, cOrg2 := mOrg1.Clone(), mOrg2.Clone()
-			m.repo.On("SearchByName", "Org").Return([]*models.Organization{cOrg1, cOrg2}, nil)
+			m.repo.On("SearchByName", "Organization").Return([]*models.Organization{cOrg1, cOrg2}, nil)
 		},
 	}, {
 		"specific query",
@@ -132,7 +132,7 @@ func TestServiceSearch(t *testing.T) {
 		nil,
 		[]*models.Organization{mOrg2},
 		func(m *mockService) {
-			m.repo.On("SearchByName", "Org").Return([]*models.Organization{mOrg2.Clone()}, nil)
+			m.repo.On("SearchByName", "Organization 2").Return([]*models.Organization{mOrg2.Clone()}, nil)
 		},
 	}, {
 		"error on searching",

@@ -42,7 +42,14 @@ func (s *service) GetByID(id string) (*models.Organization, error) {
 }
 
 func (s *service) Search(query string) ([]*models.Organization, error) {
-	return nil, nil
+	if query == "" {
+		return []*models.Organization{}, nil
+	}
+	orgs, err := s.repo.SearchByName(query)
+	if err != nil {
+		return nil, errors.ErrNotFound.Wrap(err)
+	}
+	return orgs, nil
 }
 
 func (s *service) Create(req *CreateRequest) (*models.Organization, error) {

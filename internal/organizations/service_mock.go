@@ -15,7 +15,7 @@ func (m *mockRepository) FindByID(id string) (*models.Organization, error) {
 	return org, args.Error(1)
 }
 
-func (m *mockRepository) Search(name string) ([]*models.Organization, error) {
+func (m *mockRepository) SearchByName(name string) ([]*models.Organization, error) {
 	args := m.Called(name)
 	org, _ := args.Get(0).([]*models.Organization)
 	return org, args.Error(1)
