@@ -191,7 +191,9 @@ func TestServiceRegister(t *testing.T) {
 		func(m *mockService) {
 			m.validator.On("RegisterRequest", req).Return(nil)
 			m.validator.On("Password", req.Password).Return(nil)
-			m.validator.On("Schema", mock.AnythingOfType("*models.User")).Return(nil)
+			m.validator.On("Schema", mock.MatchedBy(func(u *models.User) bool {
+				return u.Username == mUser.Username
+			})).Return(nil)
 			m.repo.On("FindByUsername", req.Username).Return(nil, ErrRepositoryNotFound)
 			m.repo.On("FindByEmail", req.Email).Return(nil, ErrRepositoryNotFound)
 			m.crypt.On("Hash", req.Password).Return("hashed.password", nil)

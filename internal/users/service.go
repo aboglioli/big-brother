@@ -122,15 +122,6 @@ func (s *service) Register(req *RegisterRequest) (*models.User, error) {
 		return nil, errors.ErrInternalServer.Wrap(err)
 	}
 
-	// Emit event
-	// userCreatedEvent := NewUserEvent(user, "UserCreated")
-	// if err := s.events.Publish(
-	// 	userCreatedEvent,
-	// 	&events.Options{Exchange: "user", Route: "user.created"},
-	// ); err != nil {
-	// 	return nil, errors.ErrInternalServer.Wrap(err)
-	// }
-
 	return user, nil
 }
 

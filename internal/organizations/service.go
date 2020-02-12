@@ -11,17 +11,17 @@ type Service interface {
 	Search(query string) ([]*models.Organization, error)
 
 	Create(req *CreateRequest) (*models.Organization, error)
-	Update(req *UpdateRequest) (*models.Organization, error)
+	Update(id string, req *UpdateRequest) (*models.Organization, error)
 	Delete(id string) error
 }
 
 // Request DTOs
 type CreateRequest struct {
-	Name string
+	Name string `json:"name" validate:"required,min=3,max=64"`
 }
 
 type UpdateRequest struct {
-	Name string
+	Name string `json:"name" validate:"required,min=3,max=64"`
 }
 
 // Implementation
@@ -53,14 +53,56 @@ func (s *service) Search(query string) ([]*models.Organization, error) {
 }
 
 func (s *service) Create(req *CreateRequest) (*models.Organization, error) {
-	return nil, nil
+	if err := s.validator.CreateRequest(req); err != nil {
+		return nil, err
+	}
+
+	org := models.NewOrganization()
+	org.Name = req.Name
+
+	if err := s.validator.Schema(org); err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.Insert(org); err != nil {
+		return nil, errors.ErrInternalServer.Wrap(err)
+	}
+
+	return org, nil
 }
 
-func (s *service) Update(req *UpdateRequest) (*models.Organization, error) {
-	return nil, nil
+func (s *service) Update(id string, req *UpdateRequest) (*models.Organization, error) {
+	if err := s.validator.UpdateRequest(req); err != nil {
+		return nil, err
+	}
+
+	org, err := s.getByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	org.Name = req.Name
+
+	if err := s.validator.Schema(org); err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.Update(org); err != nil {
+		return nil, errors.ErrInternalServer.Wrap(err)
+	}
+
+	return org, nil
 }
 
 func (s *service) Delete(id string) error {
+	if _, err := s.getByID(id); err != nil {
+		return err
+	}
+
+	if err := s.repo.Delete(id); err != nil {
+		return errors.ErrInternalServer.Wrap(err)
+	}
+
 	return nil
 }
 

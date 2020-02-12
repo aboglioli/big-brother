@@ -45,6 +45,21 @@ func (m *mockValidator) Status(org *models.Organization) error {
 	return args.Error(0)
 }
 
+func (m *mockValidator) Schema(org *models.Organization) error {
+	args := m.Called(org)
+	return args.Error(0)
+}
+
+func (m *mockValidator) CreateRequest(req *CreateRequest) error {
+	args := m.Called(req)
+	return args.Error(0)
+}
+
+func (m *mockValidator) UpdateRequest(req *UpdateRequest) error {
+	args := m.Called(req)
+	return args.Error(0)
+}
+
 type mockService struct {
 	*service
 	repo      *mockRepository

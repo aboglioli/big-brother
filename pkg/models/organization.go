@@ -3,7 +3,7 @@ package models
 type Organization struct {
 	Base
 	Timestamp
-	Name string `json:"name" validate:"required,min=4,max=64"`
+	Name string `json:"name" validate:"required,min=3,max=64"`
 }
 
 func NewOrganization() *Organization {
