@@ -152,7 +152,7 @@ func TestValidatorUpdateRequest(t *testing.T) {
 		&UpdateRequest{
 			Name: "or",
 		},
-		errors.ErrRequest.Wrap(gValidator.ErrValidation),
+		errors.ErrRequest.Wrap(gValidator.ErrFieldsValidation),
 	}, {
 		"valid",
 		&UpdateRequest{

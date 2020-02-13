@@ -2,12 +2,10 @@ package users
 
 import (
 	"net/http"
-	"regexp"
 
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/aboglioli/big-brother/pkg/models"
-	govalidator "github.com/go-playground/validator/v10"
-	"github.com/iancoleman/strcase"
+	gValidator "github.com/aboglioli/big-brother/pkg/validator"
 )
 
 // Errors
@@ -30,36 +28,12 @@ type Validator interface {
 
 // Implementations
 type validator struct {
-	validate *govalidator.Validate
+	validator *gValidator.Validator
 }
 
 func NewValidator() Validator {
-	alphaWithSpacesRE := regexp.MustCompile("^[a-zA-Záéíóú ]*$")
-	alphaWithSpaces := func(fl govalidator.FieldLevel) bool {
-		str := fl.Field().String()
-		if str == "invalid" {
-			return false
-		}
-
-		return alphaWithSpacesRE.MatchString(str)
-	}
-
-	alphaNumWithDashRE := regexp.MustCompile("^[a-zA-Z0-9-]*$")
-	alphaNumWithDash := func(fl govalidator.FieldLevel) bool {
-		str := fl.Field().String()
-		if str == "invalid" {
-			return false
-		}
-
-		return alphaNumWithDashRE.MatchString(str)
-	}
-
-	validate := govalidator.New()
-	validate.RegisterValidation("alphaspaces", alphaWithSpaces)
-	validate.RegisterValidation("alphanumdash", alphaNumWithDash)
-
 	return &validator{
-		validate: validate,
+		validator: gValidator.NewValidator(),
 	}
 }
 
@@ -77,16 +51,8 @@ func (v *validator) Status(u *models.User) error {
 }
 
 func (v *validator) Schema(u *models.User) error {
-	if err := v.validate.Struct(u); err != nil {
-		valErr := ErrSchemaValidation
-		if errs, ok := err.(govalidator.ValidationErrors); ok {
-			for _, err := range errs {
-				field := strcase.ToSnake(err.Field())
-				valErr = valErr.F(field, err.Tag())
-			}
-			return valErr
-		}
-		return valErr
+	if err := v.validator.CheckFields(u); err != nil {
+		return ErrSchemaValidation.Wrap(err)
 	}
 	return nil
 }
@@ -103,7 +69,10 @@ func (v *validator) Password(pwd string) error {
 }
 
 func (v *validator) RegisterRequest(req *RegisterRequest) error {
-	return v.checkFields(req)
+	if err := v.validator.CheckFields(req); err != nil {
+		return errors.ErrRequest.Wrap(err)
+	}
+	return nil
 }
 
 func (v *validator) UpdateRequest(req *UpdateRequest) error {
@@ -132,29 +101,22 @@ func (v *validator) UpdateRequest(req *UpdateRequest) error {
 		return err
 	}
 
-	return v.checkFields(req)
+	if err := v.validator.CheckFields(req); err != nil {
+		return errors.ErrRequest.Wrap(err)
+	}
+	return nil
 }
 
 func (v *validator) ChangePasswordRequest(req *ChangePasswordRequest) error {
-	return v.checkFields(req)
+	if err := v.validator.CheckFields(req); err != nil {
+		return errors.ErrRequest.Wrap(err)
+	}
+	return nil
 }
 
 func (v *validator) LoginRequest(req *LoginRequest) error {
-	return v.checkFields(req)
-}
-
-func (v *validator) checkFields(s interface{}) error {
-	if err := v.validate.Struct(s); err != nil {
-		reqErr := errors.ErrRequest
-		if errs, ok := err.(govalidator.ValidationErrors); ok {
-			for _, err := range errs {
-				field := strcase.ToSnake(err.Field())
-				reqErr = reqErr.F(field, err.Tag())
-			}
-			return reqErr
-		}
-		return reqErr
+	if err := v.validator.CheckFields(req); err != nil {
+		return errors.ErrRequest.Wrap(err)
 	}
-
 	return nil
 }

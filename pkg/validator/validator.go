@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	ErrValidation = errors.Validation.New("invalid_fields")
+	ErrFieldsValidation = errors.Validation.New("invalid_fields")
 )
 
 type Validator struct {
@@ -48,15 +48,14 @@ func NewValidator() *Validator {
 
 func (v *Validator) CheckFields(s interface{}) error {
 	if err := v.validate.Struct(s); err != nil {
-		reqErr := ErrValidation
+		fieldsErr := ErrFieldsValidation
 		if errs, ok := err.(govalidator.ValidationErrors); ok {
 			for _, err := range errs {
 				field := strcase.ToSnake(err.Field())
-				reqErr = reqErr.F(field, err.Tag())
+				fieldsErr = fieldsErr.F(field, err.Tag())
 			}
-			return reqErr
 		}
-		return reqErr
+		return fieldsErr
 	}
 
 	return nil

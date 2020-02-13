@@ -13,7 +13,6 @@ import (
 )
 
 func populate(db *sql.DB, users ...*models.User) error {
-
 	for _, user := range users {
 		_, err := db.Exec(`
 			INSERT INTO users(id, username, password, email, name, lastname, role, validated, enabled, created_at)
@@ -35,6 +34,9 @@ func TestRepositoryFindByID(t *testing.T) {
 	db, err := db.ConnectPostgres(c.PostgresURL, "test", c.PostgresUsername, c.PostgresPassword)
 	require.Nil(t, err)
 	require.NotNil(t, db)
+	defer func() {
+		db.Exec("DELETE FROM users")
+	}()
 
 	user1 := models.NewUser()
 	user1.Username = "user1"
@@ -58,7 +60,7 @@ func TestRepositoryFindByID(t *testing.T) {
 	user3.Validated = true
 	user3.Enabled = false
 
-	err = populate(db)
+	err = populate(db, user1, user2, user3)
 	require.Nil(t, err)
 
 	tests := []struct {
@@ -91,10 +93,29 @@ func TestRepositoryFindByID(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			assert := assert.New(t)
-			repo := NewRepository()
+			repo := NewRepository(db)
 			user, err := repo.FindByID(test.id)
-			assert.Equal(test.user, user)
-			errors.Assert(t, test.err, err)
+
+			if test.err != nil {
+				errors.Assert(t, test.err, err)
+				assert.Nil(user)
+			} else {
+				if !assert.Nil(err) {
+					if err, ok := err.(errors.Error); ok {
+						t.Errorf("%v", err.Cause)
+					}
+				}
+				assert.Equal(test.user.ID, user.ID)
+				assert.Equal(test.user.Username, user.Username)
+				assert.Equal(test.user.Password, user.Password)
+				assert.Equal(test.user.Email, user.Email)
+				assert.Equal(test.user.Name, user.Name)
+				assert.Equal(test.user.Lastname, user.Lastname)
+				assert.Equal(test.user.Role, user.Role)
+				assert.Equal(test.user.Validated, user.Validated)
+				assert.Equal(test.user.Enabled, user.Enabled)
+				assert.Equal(test.user.CreatedAt.Format("2006-01-02T15:04:05-0700"), user.CreatedAt.Format("2006-01-02T15:04:05-0700"))
+			}
 		})
 	}
 }

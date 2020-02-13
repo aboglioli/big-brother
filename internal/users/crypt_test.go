@@ -7,7 +7,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func TestPasswordCrypt(t *testing.T) {
+func TestPasswordBcrypt(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {

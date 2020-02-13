@@ -1,6 +1,8 @@
 package users
 
 import (
+	"database/sql"
+
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/aboglioli/big-brother/pkg/models"
 )
@@ -24,14 +26,43 @@ type Repository interface {
 	Delete(id string) error
 }
 
-type sqlRepository struct{}
+type sqlRepository struct {
+	db *sql.DB
+}
 
-func NewRepository() Repository {
-	return &sqlRepository{}
+func NewRepository(db *sql.DB) Repository {
+	return &sqlRepository{
+		db: db,
+	}
 }
 
 func (r *sqlRepository) FindByID(id string) (*models.User, error) {
-	return nil, nil
+	row := r.db.QueryRow(`
+		SELECT id, username, password, email, name, lastname, role, validated, enabled, created_at, updated_at, deleted_at
+		FROM users
+		WHERE id = $1
+	`, id)
+
+	var u models.User
+	err := row.Scan(
+		&u.ID,
+		&u.Username,
+		&u.Password,
+		&u.Email,
+		&u.Name,
+		&u.Lastname,
+		&u.Role,
+		&u.Validated,
+		&u.Enabled,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+		&u.DeletedAt,
+	)
+	if err != nil {
+		return nil, ErrRepositoryNotFound.Wrap(err)
+	}
+
+	return &u, nil
 }
 
 func (r *sqlRepository) FindByUsername(username string) (*models.User, error) {

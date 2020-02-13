@@ -110,11 +110,6 @@ func (err1 Error) Equals(err2 Error) bool {
 type Errors []error
 
 func (e Errors) Error() string {
-	// str := "Errors:"
-	// for i, err := range e {
-	// 	str = fmt.Sprintf("%s\n\t%d: %s", str, i, err.Error())
-	// }
-	// return str
 	b, err := json.Marshal(e)
 	if err != nil {
 		return ""

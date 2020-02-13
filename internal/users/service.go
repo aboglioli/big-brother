@@ -179,15 +179,6 @@ func (s *service) Update(id string, req *UpdateRequest) (*models.User, error) {
 		return nil, errors.ErrInternalServer.Wrap(err)
 	}
 
-	// Emit event
-	// userUpdatedEvent := NewUserEvent(user, "UserUpdated")
-	// if err := s.events.Publish(
-	// 	userUpdatedEvent,
-	// 	&events.Options{Exchange: "user", Route: "user.updated"},
-	// ); err != nil {
-	// 	return nil, errors.ErrInternalServer.Wrap(err)
-	// }
-
 	return user, nil
 }
 
@@ -232,15 +223,6 @@ func (s *service) Delete(id string) error {
 	if err := s.repo.Delete(id); err != nil {
 		return errors.ErrInternalServer.Wrap(err)
 	}
-
-	// Emit event
-	// userDeletedEvent := NewUserEvent(user, "UserDeleted")
-	// if err := s.events.Publish(
-	// 	userDeletedEvent,
-	// 	&events.Options{Exchange: "user", Route: "user.deleted"},
-	// ); err != nil {
-	// 	return errors.ErrInternalServer.Wrap(err)
-	// }
 
 	return nil
 }

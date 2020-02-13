@@ -1,9 +1,7 @@
-package users
+package models
 
 import (
 	"time"
-
-	"github.com/aboglioli/big-brother/pkg/models"
 )
 
 type UserDTO struct {
@@ -13,12 +11,12 @@ type UserDTO struct {
 	Name     string `json:"name"`
 	Lastname string `json:"lastname"`
 
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
-	Validated bool      `json:"validated"`
+	CreatedAt time.Time  `json:"createdAt"`
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+	Validated bool       `json:"validated"`
 }
 
-func NewDTO(user *models.User) *UserDTO {
+func NewUserDTO(user *User) *UserDTO {
 	return &UserDTO{
 		ID:       user.ID,
 		Username: user.Username,

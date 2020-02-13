@@ -158,7 +158,14 @@ func TestServiceRegister(t *testing.T) {
 		func(m *mockService) {
 			m.validator.On("RegisterRequest", req).Return(nil)
 			m.validator.On("Password", req.Password).Return(nil)
-			m.validator.On("Schema", mock.AnythingOfType("*models.User")).Return(nil)
+			m.validator.On("Schema", mock.MatchedBy(func(u *models.User) bool {
+				return u.ID != "" &&
+					u.Username == req.Username &&
+					u.Password == req.Password &&
+					u.Email == req.Email &&
+					u.Name == req.Name &&
+					u.Lastname == req.Lastname
+			})).Return(nil)
 			m.repo.On("FindByUsername", req.Username).Return(mUser, nil)
 			m.repo.On("FindByEmail", req.Email).Return(nil, ErrRepositoryNotFound)
 		},
@@ -312,7 +319,10 @@ func TestServiceUpdate(t *testing.T) {
 		ErrSchemaValidation,
 		func(m *mockService) {
 			u := mUser.Clone()
-			m.validator.On("UpdateRequest", mock.AnythingOfType("*users.UpdateRequest")).Return(nil)
+			m.validator.On("UpdateRequest", &UpdateRequest{
+				Name:     utils.NewString("New name"),
+				Lastname: utils.NewString("New lastname"),
+			}).Return(nil)
 			m.repo.On("FindByID", mUser.ID).Return(u, nil)
 			m.validator.On("Status", u).Return(nil)
 			m.validator.On("Schema", u).Return(ErrSchemaValidation)
@@ -327,7 +337,10 @@ func TestServiceUpdate(t *testing.T) {
 		ErrSchemaValidation,
 		func(m *mockService) {
 			u := mUser.Clone()
-			m.validator.On("UpdateRequest", mock.AnythingOfType("*users.UpdateRequest")).Return(nil)
+			m.validator.On("UpdateRequest", &UpdateRequest{
+				Username: utils.NewString("new-user"),
+				Email:    utils.NewString("new@email.com"),
+			}).Return(nil)
 			m.repo.On("FindByID", mUser.ID).Return(u, nil)
 			m.validator.On("Status", u).Return(nil)
 			m.validator.On("Schema", u).Return(ErrSchemaValidation)
@@ -422,7 +435,9 @@ func TestServiceUpdate(t *testing.T) {
 			m.repo.On("FindByID", mUser.ID).Return(u, nil)
 			m.validator.On("Status", u).Return(nil)
 			m.validator.On("Schema", u).Return(nil)
-			m.repo.On("Update", u).Return(nil)
+			m.repo.On("Update", mock.MatchedBy(func(u *models.User) bool {
+				return u.Name == "New name"
+			})).Return(nil)
 		},
 	}}
 

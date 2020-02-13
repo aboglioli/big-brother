@@ -6,6 +6,7 @@ import (
 	"github.com/aboglioli/big-brother/pkg/errors"
 	"github.com/aboglioli/big-brother/pkg/models"
 	"github.com/aboglioli/big-brother/pkg/utils"
+	gValidator "github.com/aboglioli/big-brother/pkg/validator"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -241,7 +242,7 @@ func TestValidatorRegisterRequest(t *testing.T) {
 			Password: "12345678",
 			Email:    "user@user.com",
 		},
-		errors.ErrRequest.F("name", "required").F("lastname", "required"),
+		errors.ErrRequest.Wrap(gValidator.ErrFieldsValidation.F("name", "required").F("lastname", "required")),
 	}, {
 		"invalid email",
 		&RegisterRequest{
@@ -251,7 +252,7 @@ func TestValidatorRegisterRequest(t *testing.T) {
 			Name:     "Name",
 			Lastname: "Lastname",
 		},
-		errors.ErrRequest.F("email", "email"),
+		errors.ErrRequest.Wrap(gValidator.ErrFieldsValidation.F("email", "email")),
 	}, {
 		"empty password",
 		&RegisterRequest{
@@ -261,7 +262,7 @@ func TestValidatorRegisterRequest(t *testing.T) {
 			Name:     "Name",
 			Lastname: "Lastname",
 		},
-		errors.ErrRequest.F("password", "required"),
+		errors.ErrRequest.Wrap(gValidator.ErrFieldsValidation.F("password", "required")),
 	}, {
 		"valid",
 		&RegisterRequest{
