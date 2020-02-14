@@ -10,7 +10,7 @@ type MockEventManager struct {
 }
 
 func NewMockEventManager() *MockEventManager {
-	return &MockEventManager{}
+	return new(MockEventManager)
 }
 
 func (m *MockEventManager) Publish(body interface{}, topic, route string) error {

@@ -67,8 +67,8 @@ type mockService struct {
 }
 
 func newMockService() *mockService {
-	repo := new(mockRepository)
-	validator := new(mockValidator)
+	repo := &mockRepository{}
+	validator := &mockValidator{}
 	serv := &service{
 		repo:      repo,
 		validator: validator,

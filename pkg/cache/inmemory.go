@@ -16,7 +16,7 @@ type goCache struct {
 	namespace string
 }
 
-func NewInMemory(ns string) Cache {
+func NewInMemory(ns string) *goCache {
 	c := gocache.New(2*time.Minute, 5*time.Minute)
 	return &goCache{
 		cache:     c,

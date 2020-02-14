@@ -22,6 +22,7 @@ func TestRedis(t *testing.T) {
 	// Connection
 	r, err := NewRedis("namespace")
 	require.Nil(t, err)
+	defer r.Close()
 
 	t.Run("string", func(t *testing.T) {
 		// Data

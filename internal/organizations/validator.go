@@ -21,7 +21,7 @@ type validator struct {
 	validator *gValidator.Validator
 }
 
-func NewValidator() Validator {
+func NewValidator() *validator {
 	return &validator{
 		validator: gValidator.NewValidator(),
 	}

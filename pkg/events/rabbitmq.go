@@ -46,7 +46,7 @@ type rabbitMQ struct {
 	conn *amqp.Connection
 }
 
-func NewRabbitMQ() (Bus, error) {
+func NewRabbitMQ() (*rabbitMQ, error) {
 	config := config.Get()
 	conn, err := amqp.Dial(config.RabbitURL)
 	if err != nil {

@@ -61,7 +61,7 @@ type service struct {
 	authServ  auth.Service
 }
 
-func NewService(repo Repository, events events.Bus, authServ auth.Service) Service {
+func NewService(repo Repository, events events.Bus, authServ auth.Service) *service {
 	return &service{
 		repo:      repo,
 		events:    events,

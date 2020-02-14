@@ -21,7 +21,7 @@ type bcryptCrypt struct {
 	cost int
 }
 
-func NewBcryptCrypt() PasswordCrypt {
+func NewBcryptCrypt() *bcryptCrypt {
 	c := config.Get()
 	return &bcryptCrypt{
 		cost: c.BcryptCost,

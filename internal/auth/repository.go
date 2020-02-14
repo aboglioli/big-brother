@@ -27,7 +27,7 @@ type repository struct {
 	cache cache.Cache
 }
 
-func NewRepository(cache cache.Cache) Repository {
+func NewRepository(cache cache.Cache) *repository {
 	return &repository{
 		cache: cache,
 	}

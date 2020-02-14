@@ -25,7 +25,7 @@ type service struct {
 	enc  Encoder
 }
 
-func NewService(repo Repository) Service {
+func NewService(repo Repository) *service {
 	enc := NewEncoder()
 	return &service{
 		repo: repo,

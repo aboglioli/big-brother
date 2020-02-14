@@ -17,7 +17,7 @@ type redisCache struct {
 	namespace string
 }
 
-func NewRedis(ns string) (Cache, error) {
+func NewRedis(ns string) (*redisCache, error) {
 	config := config.Get()
 	client := redis.NewClient(&redis.Options{
 		Addr:     config.RedisURL,
@@ -61,4 +61,8 @@ func (r *redisCache) Delete(k string) error {
 		return ErrCacheDelete.M("key = %s", k).Wrap(res.Err())
 	}
 	return nil
+}
+
+func (r *redisCache) Close() error {
+	return r.client.Close()
 }

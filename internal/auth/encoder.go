@@ -23,7 +23,7 @@ type encoder struct {
 	secret []byte
 }
 
-func NewEncoder() Encoder {
+func NewEncoder() *encoder {
 	c := config.Get()
 	return &encoder{
 		secret: c.JWTSecret,

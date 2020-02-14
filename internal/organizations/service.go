@@ -30,7 +30,7 @@ type service struct {
 	validator Validator
 }
 
-func NewService(repo Repository) Service {
+func NewService(repo Repository) *service {
 	return &service{
 		repo:      repo,
 		validator: NewValidator(),

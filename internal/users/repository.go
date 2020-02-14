@@ -36,7 +36,7 @@ type sqlRepository struct {
 	db *sql.DB
 }
 
-func NewRepository(db *sql.DB) Repository {
+func NewRepository(db *sql.DB) *sqlRepository {
 	return &sqlRepository{
 		db: db,
 	}
@@ -87,8 +87,8 @@ func (r *sqlRepository) Insert(u *models.User) error {
 }
 
 func (r *sqlRepository) Update(u *models.User) error {
-	u.UpdatedAt = &time.Time{}
-	*u.UpdatedAt = time.Now().UTC()
+	now := time.Now().UTC()
+	u.UpdatedAt = &now
 
 	res, err := r.db.Exec(`
 		UPDATE users
