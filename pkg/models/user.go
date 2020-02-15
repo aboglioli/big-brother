@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"time"
 )
 
 type User struct {
@@ -36,4 +37,30 @@ func (u *User) String() string {
 		return ""
 	}
 	return string(b)
+}
+
+type UserDTO struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Name     string `json:"name"`
+	Lastname string `json:"lastname"`
+
+	CreatedAt time.Time  `json:"createdAt"`
+	UpdatedAt *time.Time `json:"updatedAt,omitempty"`
+	Validated bool       `json:"validated"`
+}
+
+func (u *User) ToDTO() *UserDTO {
+	return &UserDTO{
+		ID:       u.ID,
+		Username: u.Username,
+		Email:    u.Email,
+		Name:     u.Name,
+		Lastname: u.Lastname,
+
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+		Validated: u.Validated,
+	}
 }
