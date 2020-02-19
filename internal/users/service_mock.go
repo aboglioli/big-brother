@@ -125,6 +125,7 @@ type mockService struct {
 	mock.Mock
 	*service
 	repo      *mockRepository
+	cache     *mocks.MockCache
 	events    *mocks.MockEventManager
 	validator *mockValidator
 	crypt     *mockPasswordCrypt
@@ -133,6 +134,7 @@ type mockService struct {
 
 func newMockService() *mockService {
 	repo := &mockRepository{}
+	cache := mocks.NewMockCache()
 	events := mocks.NewMockEventManager()
 	validator := &mockValidator{}
 	crypt := &mockPasswordCrypt{}
@@ -140,6 +142,7 @@ func newMockService() *mockService {
 
 	serv := &service{
 		repo:      repo,
+		cache:     cache,
 		events:    events,
 		validator: validator,
 		crypt:     crypt,
@@ -148,6 +151,7 @@ func newMockService() *mockService {
 
 	return &mockService{
 		service:   serv,
+		cache:     cache,
 		repo:      repo,
 		events:    events,
 		validator: validator,
